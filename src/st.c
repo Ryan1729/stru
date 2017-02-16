@@ -4492,7 +4492,18 @@ run:
 int
 fake_main(int argc, char *argv[])
 {
-  return argc;
+  int result = argc;
+
+  ARGBEGIN {
+	case 'v':
+    result += 100;
+		// die("%s 0.7 (c) 2010-2016 st engineers\n", argv0);
+		break;
+	default:
+    break;
+	} ARGEND;
+
+  return result;
 }
 
 int double_input(int input) {
