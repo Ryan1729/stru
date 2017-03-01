@@ -407,7 +407,6 @@ static void tinsertblankline(int);
 static int tlinelen(int);
 static void tmoveto(int, int);
 static void tmoveato(int, int);
-static void tnew(int, int);
 static void tnewline(int);
 static void tputtab(int);
 static void tputc(Rune);
@@ -1699,15 +1698,7 @@ treset(void)
 	}
 }
 
-void
-tnew(int col, int row)
-{
-	term = (Term){ .c = { .attr = { .fg = defaultfg, .bg = defaultbg } } };
-	tresize(col, row);
-	term.numlock = 1;
 
-	treset();
-}
 
 void
 tswapscreen(void)
@@ -4481,7 +4472,13 @@ run:
 	}
 	setlocale(LC_CTYPE, "");
 	XSetLocaleModifiers("");
-	tnew(MAX(cols, 1), MAX(rows, 1));
+
+  term = (Term){ .c = { .attr = { .fg = defaultfg, .bg = defaultbg } } };
+  tresize(MAX(cols, 1), MAX(rows, 1));
+  term.numlock = 1;
+
+  treset();
+
 	xinit();
 	selinit();
 	run();
