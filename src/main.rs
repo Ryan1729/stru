@@ -10,13 +10,10 @@ use std::ffi::CString;
 extern "C" {
     fn st_main(argc: libc::c_int, argv: *const *const libc::c_char) -> libc::c_int;
     fn fake_main(argc: libc::c_int, argv: *const *const libc::c_char) -> libc::c_int;
-    fn double_input(input: libc::c_int) -> libc::c_int;
 }
 
 fn main() {
-    let input = 4;
-    let output = unsafe { double_input(input) };
-    println!("{} * 2 = {}", input, output);
+
 
     //http://stackoverflow.com/a/34379937/4496839
     // create a vector of zero terminated strings

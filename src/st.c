@@ -4502,7 +4502,3 @@ fake_main(int argc, char *argv[])
 
   return result;
 }
-
-int double_input(int input) {
-    return input * 2;
-}
