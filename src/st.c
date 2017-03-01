@@ -31,8 +31,6 @@
 #include <fontconfig/fontconfig.h>
 #include <wchar.h>
 
-#include "arg.h"
-
 char *argv0;
 
 #define Glyph Glyph_
@@ -4419,49 +4417,63 @@ st_main(int argc, char *argv[])
 	xw.isfixed = False;
 	xw.cursor = cursorshape;
 
-	ARGBEGIN {
-	case 'a':
-		allowaltscreen = 0;
-		break;
-	case 'c':
-		opt_class = EARGF(usage());
-		break;
-	case 'e':
-		if (argc > 0)
-			--argc, ++argv;
-		goto run;
-	case 'f':
-		opt_font = EARGF(usage());
-		break;
-	case 'g':
-		xw.gm = XParseGeometry(EARGF(usage()),
-				&xw.l, &xw.t, &cols, &rows);
-		break;
-	case 'i':
-		xw.isfixed = 1;
-		break;
-	case 'o':
-		opt_io = EARGF(usage());
-		break;
-	case 'l':
-		opt_line = EARGF(usage());
-		break;
-	case 'n':
-		opt_name = EARGF(usage());
-		break;
-	case 't':
-	case 'T':
-		opt_title = EARGF(usage());
-		break;
-	case 'w':
-		opt_embed = EARGF(usage());
-		break;
-	case 'v':
-		die("%s 0.7 (c) 2010-2016 st engineers\n", argv0);
-		break;
-	default:
-		usage();
-	} ARGEND;
+  for (argv0 = * argv, argv++, argc--; argv[0] && argv[0][0] == '-' && argv[0][1]; argc--, argv++) {
+      char argc_;
+      char * * argv_;
+      int brk_;
+      if (argv[0][1] == '-' && argv[0][2] == '\0') {
+          argv++;
+          argc--;
+          break;
+      }
+      for (brk_ = 0, argv[0]++, argv_ = argv; argv[0][0] && !brk_; argv[0]++) {
+          if (argv_ != argv) break;
+          argc_ = argv[0][0];
+          switch (argc_) {
+          case 'a':
+              allowaltscreen = 0;
+              break;
+          case 'c':
+              opt_class = ((argv[0][1] == '\0' && argv[1] == NULL) ? ((usage()), abort(), (char * ) 0) : (brk_ = 1, (argv[0][1] != '\0') ? ( & argv[0][1]) : (argc--, argv++, argv[0])));
+              break;
+          case 'e':
+              if (argc > 0)
+                  --argc, ++argv;
+              goto run;
+          case 'f':
+              opt_font = ((argv[0][1] == '\0' && argv[1] == NULL) ? ((usage()), abort(), (char * ) 0) : (brk_ = 1, (argv[0][1] != '\0') ? ( & argv[0][1]) : (argc--, argv++, argv[0])));
+              break;
+          case 'g':
+              xw.gm = XParseGeometry(((argv[0][1] == '\0' && argv[1] == NULL) ? ((usage()), abort(), (char * ) 0) : (brk_ = 1, (argv[0][1] != '\0') ? ( & argv[0][1]) : (argc--, argv++, argv[0]))),
+              &xw.l, &xw.t, &cols, &rows);
+              break;
+          case 'i':
+              xw.isfixed = 1;
+              break;
+          case 'o':
+              opt_io = ((argv[0][1] == '\0' && argv[1] == NULL) ? ((usage()), abort(), (char * ) 0) : (brk_ = 1, (argv[0][1] != '\0') ? ( & argv[0][1]) : (argc--, argv++, argv[0])));
+              break;
+          case 'l':
+              opt_line = ((argv[0][1] == '\0' && argv[1] == NULL) ? ((usage()), abort(), (char * ) 0) : (brk_ = 1, (argv[0][1] != '\0') ? ( & argv[0][1]) : (argc--, argv++, argv[0])));
+              break;
+          case 'n':
+              opt_name = ((argv[0][1] == '\0' && argv[1] == NULL) ? ((usage()), abort(), (char * ) 0) : (brk_ = 1, (argv[0][1] != '\0') ? ( & argv[0][1]) : (argc--, argv++, argv[0])));
+              break;
+          case 't':
+          case 'T':
+              opt_title = ((argv[0][1] == '\0' && argv[1] == NULL) ? ((usage()), abort(), (char * ) 0) : (brk_ = 1, (argv[0][1] != '\0') ? ( & argv[0][1]) : (argc--, argv++, argv[0])));
+              break;
+          case 'w':
+              opt_embed = ((argv[0][1] == '\0' && argv[1] == NULL) ? ((usage()), abort(), (char * ) 0) : (brk_ = 1, (argv[0][1] != '\0') ? ( & argv[0][1]) : (argc--, argv++, argv[0])));
+              break;
+          case 'v':
+              die("%s (c) 2010-2016 st engineers\n", argv0);
+              break;
+          default:
+              usage();
+          }
+    }
+};
 
 run:
 	if (argc > 0) {
@@ -4490,15 +4502,6 @@ int
 fake_main(int argc, char *argv[])
 {
   int result = argc;
-
-  ARGBEGIN {
-	case 'v':
-    result += 100;
-		// die("%s 0.7 (c) 2010-2016 st engineers\n", argv0);
-		break;
-	default:
-    break;
-	} ARGEND;
 
   return result;
 }
