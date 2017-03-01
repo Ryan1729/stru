@@ -4497,11 +4497,3 @@ run:
 
 	return 0;
 }
-
-int
-fake_main(int argc, char *argv[])
-{
-  int result = argc;
-
-  return result;
-}
