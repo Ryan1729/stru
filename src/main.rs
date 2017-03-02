@@ -14,6 +14,22 @@ extern "C" {
                -> libc::c_int;
 }
 
+macro_rules! arg_set {
+    ( $target:ident, $args:ident, $cmd_start:ident, $len:ident) => {{
+        $cmd_start += 1;
+        if $cmd_start < $len {
+            $target = Some(CString::new($args.remove($cmd_start)).unwrap());
+
+            $cmd_start -= 1;
+            $args.remove($cmd_start); //remove the flag
+            $len = $args.len();
+        } else {
+            println!("TODO usage");
+            std::process::exit(1);
+        }
+    }}
+}
+
 fn main() {
     let mut args: Vec<String> = std::env::args().collect::<Vec<String>>();
 
@@ -29,19 +45,7 @@ fn main() {
     let mut len = args.len();
     while cmd_start < len && args[cmd_start].starts_with("-") {
         match args[cmd_start].split_at(1).1 {
-            "t" | "T" => {
-                cmd_start += 1;
-                if cmd_start < len {
-                    opt_title = Some(CString::new(args.remove(cmd_start)).unwrap());
-
-                    cmd_start -= 1;
-                    args.remove(cmd_start); //remove the flag
-                    len = args.len();
-                } else {
-                    println!("TODO usage");
-                    std::process::exit(1);
-                }
-            }
+            "t" | "T" => arg_set!(opt_title, args, cmd_start, len),
             "e" => {
                 cmd_start += 1;
                 break;
