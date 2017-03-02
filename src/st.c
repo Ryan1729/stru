@@ -4409,7 +4409,7 @@ usage(void)
 }
 
 int
-st_main(int argc, char *argv_param[], char *opt_title_param, char *opt_class_param)
+st_main(int argc, char *argv_param[], char *opt_title_param, char *opt_class_param, char *opt_io_param)
 {
   //this is simpler than passing a mutable argv from Rust
   // http://stackoverflow.com/a/36804895/4496839
@@ -4425,6 +4425,7 @@ st_main(int argc, char *argv_param[], char *opt_title_param, char *opt_class_par
 
   opt_title = xstrdup(opt_title_param);
   opt_class = xstrdup(opt_class_param);
+  opt_io = xstrdup(opt_io_param);
   puts("in c");
   puts(opt_title ? opt_title : "no title");
   puts(opt_class ? opt_class : "school in july");
@@ -4464,9 +4465,6 @@ st_main(int argc, char *argv_param[], char *opt_title_param, char *opt_class_par
               break;
           case 'i':
               xw.isfixed = 1;
-              break;
-          case 'o':
-              opt_io = ((argv[0][1] == '\0' && argv[1] == NULL) ? ((usage()), abort(), (char * ) 0) : (brk_ = 1, (argv[0][1] != '\0') ? ( & argv[0][1]) : (argc--, argv++, argv[0])));
               break;
           case 'l':
               opt_line = ((argv[0][1] == '\0' && argv[1] == NULL) ? ((usage()), abort(), (char * ) 0) : (brk_ = 1, (argv[0][1] != '\0') ? ( & argv[0][1]) : (argc--, argv++, argv[0])));

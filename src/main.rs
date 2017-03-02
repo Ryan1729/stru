@@ -11,7 +11,8 @@ extern "C" {
     fn st_main(argc: libc::c_int,
                argv: *const *const libc::c_char,
                opt_title: *const libc::c_char,
-               opt_class: *const libc::c_char)
+               opt_class: *const libc::c_char,
+               opt_io: *const libc::c_char)
                -> libc::c_int;
 }
 
@@ -42,6 +43,7 @@ fn main() {
 
     let mut opt_title: Option<CString> = None;
     let mut opt_class: Option<CString> = None;
+    let mut opt_io: Option<CString> = None;
 
     let mut cmd_start = 1; //0;
     let mut len = args.len();
@@ -64,6 +66,19 @@ fn main() {
                 cmd_start += 1;
                 if cmd_start < len {
                     opt_class = Some(CString::new(args.remove(cmd_start)).unwrap());
+
+                    cmd_start -= 1;
+                    args.remove(cmd_start); //remove the flag
+                    len = args.len();
+                } else {
+                    println!("TODO usage");
+                    std::process::exit(1);
+                }
+            }
+            "o" => {
+                cmd_start += 1;
+                if cmd_start < len {
+                    opt_io = Some(CString::new(args.remove(cmd_start)).unwrap());
 
                     cmd_start -= 1;
                     args.remove(cmd_start); //remove the flag
@@ -102,12 +117,14 @@ fn main() {
 
     println!("{:?}", opt_title);
     println!("{:?}", opt_class);
+    println!("{:?}", opt_io);
 
     unsafe {
         exit_code = st_main(c_args.len() as libc::c_int,
                             c_args.as_ptr(),
                             to_ptr(opt_title.as_ref()),
-                            to_ptr(opt_class.as_ref()));
+                            to_ptr(opt_class.as_ref()),
+                            to_ptr(opt_io.as_ref()));
     };
 
     std::process::exit(exit_code);
