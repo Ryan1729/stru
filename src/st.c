@@ -4411,6 +4411,10 @@ usage(void)
 int
 st_main(int argc, char *argv[], char *opt_title_param)
 {
+  opt_title = xstrdup(opt_title_param);
+  puts("in c");
+  puts(opt_title ? opt_title : "no title");
+
 	uint cols = 80, rows = 24;
 
 	xw.l = xw.t = 0;
@@ -4472,8 +4476,6 @@ st_main(int argc, char *argv[], char *opt_title_param)
 };
 
 run:
-  opt_title = opt_title_param ? xstrdup(opt_title_param) : "no title";
-  puts(opt_title);
   // TODO why does this cause an error?
   // puts(argv[0]);
 

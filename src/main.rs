@@ -23,7 +23,7 @@ fn main() {
     //     "".to_string()
     // };
 
-    let mut opt_title = None;
+    let mut opt_title: Option<CString> = None;
 
     let mut cmd_start = 1; //0;
     let mut len = args.len();
@@ -32,9 +32,8 @@ fn main() {
             "t" | "T" => {
                 cmd_start += 1;
                 if cmd_start < len {
-                    opt_title = CString::new(args[cmd_start].clone()).ok();
+                    opt_title = Some(CString::new(args.remove(cmd_start)).unwrap());
 
-                    args.remove(cmd_start); //remove the value
                     cmd_start -= 1;
                     args.remove(cmd_start); //remove the flag
                     len = args.len();
@@ -70,13 +69,17 @@ fn main() {
     let c_args = zt_args.iter().map(|arg| arg.as_ptr()).collect::<Vec<*const libc::c_char>>();
     let exit_code;
     unsafe {
-        let title_ptr = match opt_title {
-            Some(title) => title.as_ptr(),
-            None => std::ptr::null(),
-        };
-
-        exit_code = st_main(c_args.len() as libc::c_int, c_args.as_ptr(), title_ptr);
+        exit_code = st_main(c_args.len() as libc::c_int,
+                            c_args.as_ptr(),
+                            to_ptr(opt_title));
     };
 
     std::process::exit(exit_code);
+}
+
+fn to_ptr(possible_arg: Option<CString>) -> *const libc::c_char {
+    match possible_arg {
+        Some(arg) => arg.as_ptr(),
+        None => std::ptr::null(),
+    }
 }
