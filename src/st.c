@@ -4409,7 +4409,7 @@ usage(void)
 }
 
 int
-st_main(int argc, char *argv[])
+st_main(int argc, char *argv[], char *opt_title_param)
 {
 	uint cols = 80, rows = 24;
 
@@ -4459,10 +4459,6 @@ st_main(int argc, char *argv[])
           case 'n':
               opt_name = ((argv[0][1] == '\0' && argv[1] == NULL) ? ((usage()), abort(), (char * ) 0) : (brk_ = 1, (argv[0][1] != '\0') ? ( & argv[0][1]) : (argc--, argv++, argv[0])));
               break;
-          case 't':
-          case 'T':
-              opt_title = ((argv[0][1] == '\0' && argv[1] == NULL) ? ((usage()), abort(), (char * ) 0) : (brk_ = 1, (argv[0][1] != '\0') ? ( & argv[0][1]) : (argc--, argv++, argv[0])));
-              break;
           case 'w':
               opt_embed = ((argv[0][1] == '\0' && argv[1] == NULL) ? ((usage()), abort(), (char * ) 0) : (brk_ = 1, (argv[0][1] != '\0') ? ( & argv[0][1]) : (argc--, argv++, argv[0])));
               break;
@@ -4476,11 +4472,18 @@ st_main(int argc, char *argv[])
 };
 
 run:
+  opt_title = opt_title_param ? xstrdup(opt_title_param) : "no title";
+  puts(opt_title);
+  // TODO why does this cause an error?
+  // puts(argv[0]);
+
 	if (argc > 0) {
 		/* eat all remaining arguments */
 		opt_cmd = argv;
-		if (!opt_title && !opt_line)
-			opt_title = basename(xstrdup(argv[0]));
+		if (!opt_title && !opt_line) {
+      puts("basename(xstrdup(argv[0]))");
+      opt_title = basename(xstrdup(argv[0] ? argv[0] : "argv[0]"));
+    }
 	}
 	setlocale(LC_CTYPE, "");
 	XSetLocaleModifiers("");
