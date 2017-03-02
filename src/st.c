@@ -4409,11 +4409,13 @@ usage(void)
 }
 
 int
-st_main(int argc, char *argv[], char *opt_title_param)
+st_main(int argc, char *argv[], char *opt_title_param, char *opt_class_param)
 {
   opt_title = xstrdup(opt_title_param);
+  opt_class = xstrdup(opt_class_param);
   puts("in c");
   puts(opt_title ? opt_title : "no title");
+  puts(opt_class ? opt_class : "school in july");
 
 	uint cols = 80, rows = 24;
 
@@ -4421,59 +4423,63 @@ st_main(int argc, char *argv[], char *opt_title_param)
 	xw.isfixed = False;
 	xw.cursor = cursorshape;
 
+  puts("pre for");
+
+
   for (argv0 = * argv, argv++, argc--; argv[0] && argv[0][0] == '-' && argv[0][1]; argc--, argv++) {
-      char argc_;
-      char * * argv_;
-      int brk_;
-      if (argv[0][1] == '-' && argv[0][2] == '\0') {
-          argv++;
-          argc--;
-          break;
-      }
-      for (brk_ = 0, argv[0]++, argv_ = argv; argv[0][0] && !brk_; argv[0]++) {
-          if (argv_ != argv) break;
-          argc_ = argv[0][0];
-          switch (argc_) {
-          case 'a':
-              allowaltscreen = 0;
-              break;
-          case 'c':
-              opt_class = ((argv[0][1] == '\0' && argv[1] == NULL) ? ((usage()), abort(), (char * ) 0) : (brk_ = 1, (argv[0][1] != '\0') ? ( & argv[0][1]) : (argc--, argv++, argv[0])));
-              break;
-          case 'e':
-              if (argc > 0)
-                  --argc, ++argv;
-              goto run;
-          case 'f':
-              opt_font = ((argv[0][1] == '\0' && argv[1] == NULL) ? ((usage()), abort(), (char * ) 0) : (brk_ = 1, (argv[0][1] != '\0') ? ( & argv[0][1]) : (argc--, argv++, argv[0])));
-              break;
-          case 'g':
-              xw.gm = XParseGeometry(((argv[0][1] == '\0' && argv[1] == NULL) ? ((usage()), abort(), (char * ) 0) : (brk_ = 1, (argv[0][1] != '\0') ? ( & argv[0][1]) : (argc--, argv++, argv[0]))),
-              &xw.l, &xw.t, &cols, &rows);
-              break;
-          case 'i':
-              xw.isfixed = 1;
-              break;
-          case 'o':
-              opt_io = ((argv[0][1] == '\0' && argv[1] == NULL) ? ((usage()), abort(), (char * ) 0) : (brk_ = 1, (argv[0][1] != '\0') ? ( & argv[0][1]) : (argc--, argv++, argv[0])));
-              break;
-          case 'l':
-              opt_line = ((argv[0][1] == '\0' && argv[1] == NULL) ? ((usage()), abort(), (char * ) 0) : (brk_ = 1, (argv[0][1] != '\0') ? ( & argv[0][1]) : (argc--, argv++, argv[0])));
-              break;
-          case 'n':
-              opt_name = ((argv[0][1] == '\0' && argv[1] == NULL) ? ((usage()), abort(), (char * ) 0) : (brk_ = 1, (argv[0][1] != '\0') ? ( & argv[0][1]) : (argc--, argv++, argv[0])));
-              break;
-          case 'w':
-              opt_embed = ((argv[0][1] == '\0' && argv[1] == NULL) ? ((usage()), abort(), (char * ) 0) : (brk_ = 1, (argv[0][1] != '\0') ? ( & argv[0][1]) : (argc--, argv++, argv[0])));
-              break;
-          case 'v':
-              die("%s (c) 2010-2016 st engineers\n", argv0);
-              break;
-          default:
-              usage();
-          }
-    }
+      // char argc_;
+      // char * * argv_;
+      // int brk_;
+      // if (argv[0][1] == '-' && argv[0][2] == '\0') {
+      //     argv++;
+      //     argc--;
+      //     break;
+      // }
+      //added
+      break;
+    //   for (brk_ = 0, argv[0]++, argv_ = argv; argv[0][0] && !brk_; argv[0]++) {
+    //       if (argv_ != argv) break;
+    //       argc_ = argv[0][0];
+    //       switch (argc_) {
+    //       case 'a':
+    //           allowaltscreen = 0;
+    //           break;
+    //       case 'e':
+    //           if (argc > 0)
+    //               --argc, ++argv;
+    //           goto run;
+    //       case 'f':
+    //           opt_font = ((argv[0][1] == '\0' && argv[1] == NULL) ? ((usage()), abort(), (char * ) 0) : (brk_ = 1, (argv[0][1] != '\0') ? ( & argv[0][1]) : (argc--, argv++, argv[0])));
+    //           break;
+    //       case 'g':
+    //           xw.gm = XParseGeometry(((argv[0][1] == '\0' && argv[1] == NULL) ? ((usage()), abort(), (char * ) 0) : (brk_ = 1, (argv[0][1] != '\0') ? ( & argv[0][1]) : (argc--, argv++, argv[0]))),
+    //           &xw.l, &xw.t, &cols, &rows);
+    //           break;
+    //       case 'i':
+    //           xw.isfixed = 1;
+    //           break;
+    //       case 'o':
+    //           opt_io = ((argv[0][1] == '\0' && argv[1] == NULL) ? ((usage()), abort(), (char * ) 0) : (brk_ = 1, (argv[0][1] != '\0') ? ( & argv[0][1]) : (argc--, argv++, argv[0])));
+    //           break;
+    //       case 'l':
+    //           opt_line = ((argv[0][1] == '\0' && argv[1] == NULL) ? ((usage()), abort(), (char * ) 0) : (brk_ = 1, (argv[0][1] != '\0') ? ( & argv[0][1]) : (argc--, argv++, argv[0])));
+    //           break;
+    //       case 'n':
+    //           opt_name = ((argv[0][1] == '\0' && argv[1] == NULL) ? ((usage()), abort(), (char * ) 0) : (brk_ = 1, (argv[0][1] != '\0') ? ( & argv[0][1]) : (argc--, argv++, argv[0])));
+    //           break;
+    //       case 'w':
+    //           opt_embed = ((argv[0][1] == '\0' && argv[1] == NULL) ? ((usage()), abort(), (char * ) 0) : (brk_ = 1, (argv[0][1] != '\0') ? ( & argv[0][1]) : (argc--, argv++, argv[0])));
+    //           break;
+    //       case 'v':
+    //           die("%s (c) 2010-2016 st engineers\n", argv0);
+    //           break;
+    //       default:
+    //           usage();
+    //       }
+    // }
 };
+
+puts("post for");
 
 run:
   // TODO why does this cause an error?

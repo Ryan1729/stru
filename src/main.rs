@@ -10,7 +10,8 @@ use std::ffi::CString;
 extern "C" {
     fn st_main(argc: libc::c_int,
                argv: *const *const libc::c_char,
-               opt_title: *const libc::c_char)
+               opt_title: *const libc::c_char,
+               opt_class: *const libc::c_char)
                -> libc::c_int;
 }
 
@@ -40,12 +41,38 @@ fn main() {
     // };
 
     let mut opt_title: Option<CString> = None;
+    let mut opt_class: Option<CString> = None;
 
     let mut cmd_start = 1; //0;
     let mut len = args.len();
     while cmd_start < len && args[cmd_start].starts_with("-") {
         match args[cmd_start].split_at(1).1 {
-            "t" | "T" => arg_set!(opt_title, args, cmd_start, len),
+            "t" | "T" => {
+                cmd_start += 1;
+                if cmd_start < len {
+                    opt_title = Some(CString::new(args.remove(cmd_start)).unwrap());
+
+                    cmd_start -= 1;
+                    args.remove(cmd_start); //remove the flag
+                    len = args.len();
+                } else {
+                    println!("TODO usage");
+                    std::process::exit(1);
+                }
+            }
+            "c" => {
+                cmd_start += 1;
+                if cmd_start < len {
+                    opt_class = Some(CString::new(args.remove(cmd_start)).unwrap());
+
+                    cmd_start -= 1;
+                    args.remove(cmd_start); //remove the flag
+                    len = args.len();
+                } else {
+                    println!("TODO usage");
+                    std::process::exit(1);
+                }
+            }
             "e" => {
                 cmd_start += 1;
                 break;
@@ -72,16 +99,21 @@ fn main() {
     // convert the strings to raw pointers
     let c_args = zt_args.iter().map(|arg| arg.as_ptr()).collect::<Vec<*const libc::c_char>>();
     let exit_code;
+
+    println!("{:?}", opt_title);
+    println!("{:?}", opt_class);
+
     unsafe {
         exit_code = st_main(c_args.len() as libc::c_int,
                             c_args.as_ptr(),
-                            to_ptr(opt_title));
+                            to_ptr(opt_title.as_ref()),
+                            to_ptr(opt_class.as_ref()));
     };
 
     std::process::exit(exit_code);
 }
 
-fn to_ptr(possible_arg: Option<CString>) -> *const libc::c_char {
+fn to_ptr(possible_arg: Option<&CString>) -> *const libc::c_char {
     match possible_arg {
         Some(arg) => arg.as_ptr(),
         None => std::ptr::null(),
