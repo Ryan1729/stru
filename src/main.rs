@@ -49,45 +49,9 @@ fn main() {
     let mut len = args.len();
     while cmd_start < len && args[cmd_start].starts_with("-") {
         match args[cmd_start].split_at(1).1 {
-            "t" | "T" => {
-                cmd_start += 1;
-                if cmd_start < len {
-                    opt_title = Some(CString::new(args.remove(cmd_start)).unwrap());
-
-                    cmd_start -= 1;
-                    args.remove(cmd_start); //remove the flag
-                    len = args.len();
-                } else {
-                    println!("TODO usage");
-                    std::process::exit(1);
-                }
-            }
-            "c" => {
-                cmd_start += 1;
-                if cmd_start < len {
-                    opt_class = Some(CString::new(args.remove(cmd_start)).unwrap());
-
-                    cmd_start -= 1;
-                    args.remove(cmd_start); //remove the flag
-                    len = args.len();
-                } else {
-                    println!("TODO usage");
-                    std::process::exit(1);
-                }
-            }
-            "o" => {
-                cmd_start += 1;
-                if cmd_start < len {
-                    opt_io = Some(CString::new(args.remove(cmd_start)).unwrap());
-
-                    cmd_start -= 1;
-                    args.remove(cmd_start); //remove the flag
-                    len = args.len();
-                } else {
-                    println!("TODO usage");
-                    std::process::exit(1);
-                }
-            }
+            "t" | "T" => arg_set!(opt_title, args, cmd_start, len),
+            "c" => arg_set!(opt_class, args, cmd_start, len),
+            "o" => arg_set!(opt_io, args, cmd_start, len),
             "e" => {
                 cmd_start += 1;
                 break;
