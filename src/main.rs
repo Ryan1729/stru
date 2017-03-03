@@ -17,7 +17,9 @@ extern "C" {
                opt_font: *const libc::c_char,
                opt_line: *const libc::c_char,
                opt_name: *const libc::c_char,
-               opt_embed: *const libc::c_char)
+               opt_embed: *const libc::c_char,
+               opt_allow_alt_screen: libc::c_int,
+               opt_is_fixed: libc::c_int)
                -> libc::c_int;
 }
 
@@ -55,10 +57,30 @@ fn main() {
     let mut opt_name: Option<CString> = None;
     let mut opt_embed: Option<CString> = None;
 
+    let mut opt_allow_alt_screen = true;
+    let mut opt_is_fixed = false;
+
     let mut cmd_start = 1; //0;
     let mut len = args.len();
     while cmd_start < len && args[cmd_start].starts_with("-") {
-        match args[cmd_start].split_at(1).1 {
+        let mut flag = args[cmd_start].split_at(1).1.to_owned();
+
+        flag = flag.chars()
+            .filter(|c| match *c {
+                'a' => {
+                    opt_allow_alt_screen = false;
+                    false
+                }
+                'i' => {
+                    opt_is_fixed = true;
+                    false
+                }
+
+                _ => true,
+            })
+            .collect();
+
+        match flag.as_ref() {
             "t" | "T" => arg_set!(opt_title, args, cmd_start, len),
             "c" => arg_set!(opt_class, args, cmd_start, len),
             "o" => arg_set!(opt_io, args, cmd_start, len),
@@ -71,8 +93,14 @@ fn main() {
                 cmd_start += 1;
                 break;
             }
+            "" => {
+                args.remove(cmd_start);
+
+                len = args.len();
+            }
             _ => {
-                cmd_start += 1;
+                println!("TODO usage");
+                std::process::exit(1);
             }
         }
 
@@ -104,7 +132,9 @@ fn main() {
                             to_ptr(opt_font.as_ref()),
                             to_ptr(opt_line.as_ref()),
                             to_ptr(opt_name.as_ref()),
-                            to_ptr(opt_embed.as_ref()));
+                            to_ptr(opt_embed.as_ref()),
+                            if opt_allow_alt_screen { 1 } else { 0 } as libc::c_int,
+                            if opt_is_fixed { 1 } else { 0 } as libc::c_int);
     };
 
     std::process::exit(exit_code);

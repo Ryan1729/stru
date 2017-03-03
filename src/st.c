@@ -4411,7 +4411,7 @@ usage(void)
 int
 st_main(int argc, char *argv_param[], char *opt_title_param, char *opt_class_param,
   char *opt_io_param, char *opt_geo_param, char *opt_font_param, char *opt_line_param,
-  char *opt_name_param, char *opt_embed_param)
+  char *opt_name_param, char *opt_embed_param, int allowaltscreen_param, int isfixed_param)
 {
   //this is simpler than passing a mutable argv from Rust
   // http://stackoverflow.com/a/36804895/4496839
@@ -4433,11 +4433,13 @@ st_main(int argc, char *argv_param[], char *opt_title_param, char *opt_class_par
   opt_name = opt_name_param ? xstrdup(opt_name_param) : NULL;
   opt_embed = opt_embed_param ? xstrdup(opt_embed_param) : NULL;
 
+  //I'm not sure where allowaltscreen is declared, but I guess I'll find out eventually
+  allowaltscreen = allowaltscreen_param ? 1 : 0;
 
 	uint cols = 80, rows = 24;
 
 	xw.l = xw.t = 0;
-	xw.isfixed = False;
+	xw.isfixed = isfixed_param ? 1 : False;
 	xw.cursor = cursorshape;
 
   if (opt_geo_param) {
@@ -4458,16 +4460,10 @@ st_main(int argc, char *argv_param[], char *opt_title_param, char *opt_class_par
           if (argv_ != argv) break;
           argc_ = argv[0][0];
           switch (argc_) {
-          case 'a':
-              allowaltscreen = 0;
-              break;
           case 'e':
               if (argc > 0)
                   --argc, ++argv;
               goto run;
-          case 'i':
-              xw.isfixed = 1;
-              break;
           case 'v':
               die("%s (c) 2010-2016 st engineers\n", argv0);
               break;
