@@ -31,8 +31,6 @@
 #include <fontconfig/fontconfig.h>
 #include <wchar.h>
 
-char *argv0;
-
 #define Glyph Glyph_
 #define Font Font_
 
@@ -495,8 +493,6 @@ static ssize_t xwrite(int, const char *, size_t);
 static void *xmalloc(size_t);
 static void *xrealloc(void *, size_t);
 static char *xstrdup(char *);
-
-static void usage(void);
 
 static void (*handler[LASTEvent])(XEvent *) = {
 	[KeyPress] = kpress,
@@ -4393,19 +4389,6 @@ run(void)
 			}
 		}
 	}
-}
-
-void
-usage(void)
-{
-	die("usage: %s [-aiv] [-c class] [-f font] [-g geometry]"
-	    " [-n name] [-o file]\n"
-	    "          [-T title] [-t title] [-w windowid]"
-	    " [[-e] command [args ...]]\n"
-	    "       %s [-aiv] [-c class] [-f font] [-g geometry]"
-	    " [-n name] [-o file]\n"
-	    "          [-T title] [-t title] [-w windowid] -l line"
-	    " [stty_args ...]\n", argv0, argv0);
 }
 
 int

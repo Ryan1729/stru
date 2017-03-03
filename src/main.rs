@@ -24,7 +24,7 @@ extern "C" {
 }
 
 macro_rules! arg_set {
-    ( $target:ident, $args:ident, $cmd_start:ident, $len:ident) => {{
+    ( $target:ident, $args:ident, $cmd_start:ident, $len:ident, $exe_path:expr) => {{
         $cmd_start += 1;
         if $cmd_start < $len {
             $target = Some(CString::new($args.remove($cmd_start)).unwrap());
@@ -33,8 +33,7 @@ macro_rules! arg_set {
             $args.remove($cmd_start); //remove the flag
             $len = $args.len();
         } else {
-            println!("TODO usage");
-            std::process::exit(1);
+            usage($exe_path)
         }
     }}
 }
@@ -57,6 +56,15 @@ macro_rules! die {
             }
             std::process::exit(1);
         }};
+}
+
+fn usage(exe_path: &str) {
+    die!("usage:  {} [-aiv] [-c class] [-f font] [-g geometry] [-n name] [-o file]\n
+        [-T title] [-t title] [-w windowid] [[-e] command [args ...]]\n
+        {} [-aiv] [-c class] [-f font] [-g geometry] [-n name] [-o file]\n
+        [-T title] [-t title] [-w windowid] -l line [stty_args ...]\n",
+         exe_path,
+         exe_path);
 }
 
 fn main() {
@@ -112,14 +120,14 @@ and can be found at st.suckless.org\n",
             .collect();
 
         match flag.as_ref() {
-            "t" | "T" => arg_set!(opt_title, args, cmd_start, len),
-            "c" => arg_set!(opt_class, args, cmd_start, len),
-            "o" => arg_set!(opt_io, args, cmd_start, len),
-            "g" => arg_set!(opt_geo, args, cmd_start, len),
-            "f" => arg_set!(opt_font, args, cmd_start, len),
-            "l" => arg_set!(opt_line, args, cmd_start, len),
-            "n" => arg_set!(opt_name, args, cmd_start, len),
-            "w" => arg_set!(opt_embed, args, cmd_start, len),
+            "t" | "T" => arg_set!(opt_title, args, cmd_start, len, &exe_path),
+            "c" => arg_set!(opt_class, args, cmd_start, len, &exe_path),
+            "o" => arg_set!(opt_io, args, cmd_start, len, &exe_path),
+            "g" => arg_set!(opt_geo, args, cmd_start, len, &exe_path),
+            "f" => arg_set!(opt_font, args, cmd_start, len, &exe_path),
+            "l" => arg_set!(opt_line, args, cmd_start, len, &exe_path),
+            "n" => arg_set!(opt_name, args, cmd_start, len, &exe_path),
+            "w" => arg_set!(opt_embed, args, cmd_start, len, &exe_path),
             "e" => {
                 cmd_start += 1;
                 break;
@@ -129,10 +137,7 @@ and can be found at st.suckless.org\n",
 
                 len = args.len();
             }
-            _ => {
-                println!("TODO usage");
-                std::process::exit(1);
-            }
+            _ => usage(&exe_path),
         }
 
 
