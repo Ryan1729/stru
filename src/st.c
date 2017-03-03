@@ -4424,7 +4424,6 @@ st_main(int argc, char *argv_param[], char *opt_title_param, char *opt_class_par
   }
   argv[argc] = NULL;
 
-
   opt_title = opt_title_param ? xstrdup(opt_title_param) : NULL;
   opt_class = opt_class_param ? xstrdup(opt_class_param) : NULL;
   opt_io = opt_io_param ? xstrdup(opt_io_param) : NULL;
@@ -4464,9 +4463,6 @@ st_main(int argc, char *argv_param[], char *opt_title_param, char *opt_class_par
               if (argc > 0)
                   --argc, ++argv;
               goto run;
-          case 'v':
-              die("%s (c) 2010-2016 st engineers\n", argv0);
-              break;
           default:
               usage();
           }
@@ -4479,8 +4475,7 @@ run:
 		/* eat all remaining arguments */
 		opt_cmd = argv;
 		if (!opt_title && !opt_line) {
-      puts("basename(xstrdup(argv[0]))");
-      opt_title = basename(xstrdup(argv[0] ? argv[0] : "argv[0]"));
+      opt_title = basename(xstrdup(argv[0] ? argv[0] : "stru"));
     }
 	}
 	setlocale(LC_CTYPE, "");

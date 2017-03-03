@@ -1,3 +1,3 @@
 #!/bin/bash
 
-rustup run nightly-2016-08-01 cargo run -- $*
+rustup run nightly-2017-02-09 cargo run -- $*

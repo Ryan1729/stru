@@ -39,14 +39,34 @@ macro_rules! arg_set {
     }}
 }
 
+//adapted from https://github.com/rust-lang/rfcs/issues/1078
+macro_rules! die {
+    ($fmt:expr) => {{ use std::io::Write;
+            if let Err(e) = write!(&mut std::io::stderr(), $fmt) {
+                panic!("Failed to write to stderr.\
+                    \nOriginal error output: {}\
+                    \nSecondary error writing to stderr: {}", $fmt, e);
+            }
+            std::process::exit(1);
+        }};
+    ($fmt:expr, $($arg:tt)*) => {{ use std::io::Write;
+            if let Err(e) = write!(&mut std::io::stderr(), $fmt, $($arg)*) {
+                panic!("Failed to write to stderr.\
+                    \nOriginal error output: {}\
+                    \nSecondary error writing to stderr: {}", format!($fmt, $($arg)*), e);
+            }
+            std::process::exit(1);
+        }};
+}
+
 fn main() {
     let mut args: Vec<String> = std::env::args().collect::<Vec<String>>();
 
-    // let _exe_path = if args.len() > 0 {
-    //     args.remove(0)
-    // } else {
-    //     "".to_string()
-    // };
+    let exe_path = if args.len() > 0 {
+        args.remove(0)
+    } else {
+        "stru".to_string()
+    };
 
     let mut opt_title: Option<CString> = None;
     let mut opt_class: Option<CString> = None;
@@ -60,13 +80,24 @@ fn main() {
     let mut opt_allow_alt_screen = true;
     let mut opt_is_fixed = false;
 
-    let mut cmd_start = 1; //0;
+    let mut cmd_start = 0;
     let mut len = args.len();
     while cmd_start < len && args[cmd_start].starts_with("-") {
         let mut flag = args[cmd_start].split_at(1).1.to_owned();
 
         flag = flag.chars()
             .filter(|c| match *c {
+                'v' => {
+                    die!("{}
+A port of st to Rust.
+
+Original port was done from the version of st found at
+https://github.com/Ryan1729/st-plus-some-patches
+
+C version of st (c) 2010-2016 st engineers
+and can be found at st.suckless.org\n",
+                         exe_path)
+                }
                 'a' => {
                     opt_allow_alt_screen = false;
                     false
