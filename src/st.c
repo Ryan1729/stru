@@ -4008,7 +4008,7 @@ xsettitle(char *p)
 void
 xresettitle(void)
 {
-	xsettitle(opt_title ? opt_title : "st");
+	xsettitle(opt_title ? opt_title : "stru");
 }
 
 void
@@ -4417,7 +4417,6 @@ st_main(int argc, char *argv[], char *opt_title_param, char *opt_class_param,
     xw.gm = XParseGeometry(xstrdup(opt_geo_param),&xw.l, &xw.t, &cols, &rows);
   }
 
-run:
 	if (argc > 0) {
 		/* eat all remaining arguments */
 		opt_cmd = argv;
