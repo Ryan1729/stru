@@ -58,6 +58,10 @@ macro_rules! die {
         }};
 }
 
+fn basename(path: &str) -> &str {
+    path.rsplitn(2, "/").next().unwrap_or(path)
+}
+
 fn usage(exe_path: &str) {
     die!("usage:  {} [-aiv] [-c class] [-f font] [-g geometry] [-n name] [-o file]\n
         [-T title] [-t title] [-w windowid] [[-e] command [args ...]]\n
@@ -143,6 +147,8 @@ and can be found at st.suckless.org\n",
 
     }
 
+
+
     let opt_cmd = args.split_at(cmd_start).1.to_owned();
 
     println!("opt_cmd {:?} args {:?}, ", opt_cmd, args);
@@ -157,6 +163,13 @@ and can be found at st.suckless.org\n",
     // convert the strings to raw pointers
     let c_args = zt_args.iter().map(|arg| arg.as_ptr()).collect::<Vec<*const libc::c_char>>();
     let exit_code;
+
+    if c_args.len() > 0 {
+        if opt_title.is_none() && opt_line.is_none() {
+            opt_title = opt_cmd.get(0)
+                .map(|arg| CString::new((basename((*arg).as_ref())).to_string()).unwrap());
+        }
+    }
 
     unsafe {
         exit_code = st_main(c_args.len() as libc::c_int,

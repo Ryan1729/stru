@@ -4420,10 +4420,8 @@ st_main(int argc, char *argv[], char *opt_title_param, char *opt_class_param,
 	if (argc > 0) {
 		/* eat all remaining arguments */
 		opt_cmd = argv;
-		if (!opt_title && !opt_line) {
-      opt_title = basename(xstrdup(argv[0] ? argv[0] : "stru"));
-    }
 	}
+
 	setlocale(LC_CTYPE, "");
 	XSetLocaleModifiers("");
 
