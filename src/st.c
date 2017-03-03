@@ -4409,7 +4409,7 @@ usage(void)
 }
 
 int
-st_main(int argc, char *argv_param[], char *opt_title_param, char *opt_class_param, char *opt_io_param)
+st_main(int argc, char *argv_param[], char *opt_title_param, char *opt_class_param, char *opt_io_param, char *opt_geo_param)
 {
   //this is simpler than passing a mutable argv from Rust
   // http://stackoverflow.com/a/36804895/4496839
@@ -4426,16 +4426,18 @@ st_main(int argc, char *argv_param[], char *opt_title_param, char *opt_class_par
   opt_title = opt_title_param ? xstrdup(opt_title_param) : NULL;
   opt_class = opt_class_param ? xstrdup(opt_class_param) : NULL;
   opt_io = opt_io_param ? xstrdup(opt_io_param) : NULL;
-  puts("in c");
-  puts(opt_title ? opt_title : "no title");
-  puts(opt_class ? opt_class : "school in july");
-  puts(opt_io ? opt_io : "stay mum");
+
 
 	uint cols = 80, rows = 24;
 
 	xw.l = xw.t = 0;
 	xw.isfixed = False;
 	xw.cursor = cursorshape;
+
+  if (opt_geo_param) {
+    xw.gm = XParseGeometry(xstrdup(opt_geo_param),&xw.l, &xw.t, &cols, &rows);
+  }
+
 
   for (argv0 = * argv, argv++, argc--; argv[0] && argv[0][0] == '-' && argv[0][1]; argc--, argv++) {
       char argc_;
@@ -4459,10 +4461,6 @@ st_main(int argc, char *argv_param[], char *opt_title_param, char *opt_class_par
               goto run;
           case 'f':
               opt_font = ((argv[0][1] == '\0' && argv[1] == NULL) ? ((usage()), abort(), (char * ) 0) : (brk_ = 1, (argv[0][1] != '\0') ? ( & argv[0][1]) : (argc--, argv++, argv[0])));
-              break;
-          case 'g':
-              xw.gm = XParseGeometry(((argv[0][1] == '\0' && argv[1] == NULL) ? ((usage()), abort(), (char * ) 0) : (brk_ = 1, (argv[0][1] != '\0') ? ( & argv[0][1]) : (argc--, argv++, argv[0]))),
-              &xw.l, &xw.t, &cols, &rows);
               break;
           case 'i':
               xw.isfixed = 1;

@@ -12,7 +12,8 @@ extern "C" {
                argv: *const *const libc::c_char,
                opt_title: *const libc::c_char,
                opt_class: *const libc::c_char,
-               opt_io: *const libc::c_char)
+               opt_io: *const libc::c_char,
+               opt_geo: *const libc::c_char)
                -> libc::c_int;
 }
 
@@ -44,6 +45,7 @@ fn main() {
     let mut opt_title: Option<CString> = None;
     let mut opt_class: Option<CString> = None;
     let mut opt_io: Option<CString> = None;
+    let mut opt_geo: Option<CString> = None;
 
     let mut cmd_start = 1; //0;
     let mut len = args.len();
@@ -52,6 +54,7 @@ fn main() {
             "t" | "T" => arg_set!(opt_title, args, cmd_start, len),
             "c" => arg_set!(opt_class, args, cmd_start, len),
             "o" => arg_set!(opt_io, args, cmd_start, len),
+            "g" => arg_set!(opt_geo, args, cmd_start, len),
             "e" => {
                 cmd_start += 1;
                 break;
@@ -79,16 +82,13 @@ fn main() {
     let c_args = zt_args.iter().map(|arg| arg.as_ptr()).collect::<Vec<*const libc::c_char>>();
     let exit_code;
 
-    println!("{:?}", opt_title);
-    println!("{:?}", opt_class);
-    println!("{:?}", opt_io);
-
     unsafe {
         exit_code = st_main(c_args.len() as libc::c_int,
                             c_args.as_ptr(),
                             to_ptr(opt_title.as_ref()),
                             to_ptr(opt_class.as_ref()),
-                            to_ptr(opt_io.as_ref()));
+                            to_ptr(opt_io.as_ref()),
+                            to_ptr(opt_geo.as_ref()));
     };
 
     std::process::exit(exit_code);
