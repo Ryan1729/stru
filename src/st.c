@@ -4423,12 +4423,13 @@ st_main(int argc, char *argv_param[], char *opt_title_param, char *opt_class_par
   argv[argc] = NULL;
 
 
-  opt_title = xstrdup(opt_title_param);
-  opt_class = xstrdup(opt_class_param);
-  opt_io = xstrdup(opt_io_param);
+  opt_title = opt_title_param ? xstrdup(opt_title_param) : NULL;
+  opt_class = opt_class_param ? xstrdup(opt_class_param) : NULL;
+  opt_io = opt_io_param ? xstrdup(opt_io_param) : NULL;
   puts("in c");
   puts(opt_title ? opt_title : "no title");
   puts(opt_class ? opt_class : "school in july");
+  puts(opt_io ? opt_io : "stay mum");
 
 	uint cols = 80, rows = 24;
 
