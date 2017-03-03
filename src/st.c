@@ -4487,9 +4487,6 @@ st_main(int argc, char *argv_param[], char *opt_title_param, char *opt_class_par
 
 
 run:
-  // TODO why does this cause an error?
-  // puts(argv[0]);
-
 	if (argc > 0) {
 		/* eat all remaining arguments */
 		opt_cmd = argv;
