@@ -138,13 +138,13 @@ and can be found at st.suckless.org\n",
 
     }
 
-    let opt_cmd = args.split_at(cmd_start).1;
+    let opt_cmd = args.split_at(cmd_start).1.to_owned();
 
     println!("opt_cmd {:?} args {:?}, ", opt_cmd, args);
 
     //http://stackoverflow.com/a/34379937/4496839
     // create a vector of zero terminated strings
-    let zt_args = args.iter()
+    let zt_args = opt_cmd.iter()
         .cloned()
         .map(|arg| CString::new((*arg).to_string()).unwrap())
         .collect::<Vec<CString>>();

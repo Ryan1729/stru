@@ -4409,21 +4409,10 @@ usage(void)
 }
 
 int
-st_main(int argc, char *argv_param[], char *opt_title_param, char *opt_class_param,
+st_main(int argc, char *argv[], char *opt_title_param, char *opt_class_param,
   char *opt_io_param, char *opt_geo_param, char *opt_font_param, char *opt_line_param,
   char *opt_name_param, char *opt_embed_param, int allowaltscreen_param, int isfixed_param)
 {
-  //this is simpler than passing a mutable argv from Rust
-  // http://stackoverflow.com/a/36804895/4496839
-  char** argv = malloc((argc+1) * sizeof *argv);
-  for(int i = 0; i < argc; ++i)
-  {
-      size_t length = strlen(argv_param[i])+1;
-      argv[i] = malloc(length);
-      memcpy(argv[i], argv_param[i], length);
-  }
-  argv[argc] = NULL;
-
   opt_title = opt_title_param ? xstrdup(opt_title_param) : NULL;
   opt_class = opt_class_param ? xstrdup(opt_class_param) : NULL;
   opt_io = opt_io_param ? xstrdup(opt_io_param) : NULL;
@@ -4444,31 +4433,6 @@ st_main(int argc, char *argv_param[], char *opt_title_param, char *opt_class_par
   if (opt_geo_param) {
     xw.gm = XParseGeometry(xstrdup(opt_geo_param),&xw.l, &xw.t, &cols, &rows);
   }
-
-
-  for (argv0 = * argv, argv++, argc--; argv[0] && argv[0][0] == '-' && argv[0][1]; argc--, argv++) {
-      char argc_;
-      char * * argv_;
-      int brk_;
-      if (argv[0][1] == '-' && argv[0][2] == '\0') {
-          argv++;
-          argc--;
-          break;
-      }
-      for (brk_ = 0, argv[0]++, argv_ = argv; argv[0][0] && !brk_; argv[0]++) {
-          if (argv_ != argv) break;
-          argc_ = argv[0][0];
-          switch (argc_) {
-          case 'e':
-              if (argc > 0)
-                  --argc, ++argv;
-              goto run;
-          default:
-              usage();
-          }
-      }
-  };
-
 
 run:
 	if (argc > 0) {
