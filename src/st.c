@@ -4409,7 +4409,9 @@ usage(void)
 }
 
 int
-st_main(int argc, char *argv_param[], char *opt_title_param, char *opt_class_param, char *opt_io_param, char *opt_geo_param)
+st_main(int argc, char *argv_param[], char *opt_title_param, char *opt_class_param,
+  char *opt_io_param, char *opt_geo_param, char *opt_font_param, char *opt_line_param,
+  char *opt_name_param, char *opt_embed_param)
 {
   //this is simpler than passing a mutable argv from Rust
   // http://stackoverflow.com/a/36804895/4496839
@@ -4426,6 +4428,10 @@ st_main(int argc, char *argv_param[], char *opt_title_param, char *opt_class_par
   opt_title = opt_title_param ? xstrdup(opt_title_param) : NULL;
   opt_class = opt_class_param ? xstrdup(opt_class_param) : NULL;
   opt_io = opt_io_param ? xstrdup(opt_io_param) : NULL;
+  opt_font = opt_font_param ? xstrdup(opt_font_param) : NULL;
+  opt_line = opt_line_param ? xstrdup(opt_line_param) : NULL;
+  opt_name = opt_name_param ? xstrdup(opt_name_param) : NULL;
+  opt_embed = opt_embed_param ? xstrdup(opt_embed_param) : NULL;
 
 
 	uint cols = 80, rows = 24;
@@ -4459,20 +4465,8 @@ st_main(int argc, char *argv_param[], char *opt_title_param, char *opt_class_par
               if (argc > 0)
                   --argc, ++argv;
               goto run;
-          case 'f':
-              opt_font = ((argv[0][1] == '\0' && argv[1] == NULL) ? ((usage()), abort(), (char * ) 0) : (brk_ = 1, (argv[0][1] != '\0') ? ( & argv[0][1]) : (argc--, argv++, argv[0])));
-              break;
           case 'i':
               xw.isfixed = 1;
-              break;
-          case 'l':
-              opt_line = ((argv[0][1] == '\0' && argv[1] == NULL) ? ((usage()), abort(), (char * ) 0) : (brk_ = 1, (argv[0][1] != '\0') ? ( & argv[0][1]) : (argc--, argv++, argv[0])));
-              break;
-          case 'n':
-              opt_name = ((argv[0][1] == '\0' && argv[1] == NULL) ? ((usage()), abort(), (char * ) 0) : (brk_ = 1, (argv[0][1] != '\0') ? ( & argv[0][1]) : (argc--, argv++, argv[0])));
-              break;
-          case 'w':
-              opt_embed = ((argv[0][1] == '\0' && argv[1] == NULL) ? ((usage()), abort(), (char * ) 0) : (brk_ = 1, (argv[0][1] != '\0') ? ( & argv[0][1]) : (argc--, argv++, argv[0])));
               break;
           case 'v':
               die("%s (c) 2010-2016 st engineers\n", argv0);

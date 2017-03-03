@@ -13,7 +13,11 @@ extern "C" {
                opt_title: *const libc::c_char,
                opt_class: *const libc::c_char,
                opt_io: *const libc::c_char,
-               opt_geo: *const libc::c_char)
+               opt_geo: *const libc::c_char,
+               opt_font: *const libc::c_char,
+               opt_line: *const libc::c_char,
+               opt_name: *const libc::c_char,
+               opt_embed: *const libc::c_char)
                -> libc::c_int;
 }
 
@@ -46,6 +50,10 @@ fn main() {
     let mut opt_class: Option<CString> = None;
     let mut opt_io: Option<CString> = None;
     let mut opt_geo: Option<CString> = None;
+    let mut opt_font: Option<CString> = None;
+    let mut opt_line: Option<CString> = None;
+    let mut opt_name: Option<CString> = None;
+    let mut opt_embed: Option<CString> = None;
 
     let mut cmd_start = 1; //0;
     let mut len = args.len();
@@ -55,6 +63,10 @@ fn main() {
             "c" => arg_set!(opt_class, args, cmd_start, len),
             "o" => arg_set!(opt_io, args, cmd_start, len),
             "g" => arg_set!(opt_geo, args, cmd_start, len),
+            "f" => arg_set!(opt_font, args, cmd_start, len),
+            "l" => arg_set!(opt_line, args, cmd_start, len),
+            "n" => arg_set!(opt_name, args, cmd_start, len),
+            "w" => arg_set!(opt_embed, args, cmd_start, len),
             "e" => {
                 cmd_start += 1;
                 break;
@@ -88,7 +100,11 @@ fn main() {
                             to_ptr(opt_title.as_ref()),
                             to_ptr(opt_class.as_ref()),
                             to_ptr(opt_io.as_ref()),
-                            to_ptr(opt_geo.as_ref()));
+                            to_ptr(opt_geo.as_ref()),
+                            to_ptr(opt_font.as_ref()),
+                            to_ptr(opt_line.as_ref()),
+                            to_ptr(opt_name.as_ref()),
+                            to_ptr(opt_embed.as_ref()));
     };
 
     std::process::exit(exit_code);
