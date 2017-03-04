@@ -98,7 +98,7 @@ pub struct TCursor {
 
 #[no_mangle]
 #[allow(non_upper_case_globals)]
-pub static ts: TestStruct = TestStruct {
+pub static mut term: Term = Term {
     x: 0,
     y: 0,
     line: 0,
@@ -123,7 +123,7 @@ pub static ts: TestStruct = TestStruct {
     bot: 0,
     mode: 0,
     esc: 0,
-    trantbl: [0, 1, 2, 3],
+    trantbl: [0, 0, 0, 0],
     charset: 0,
     icharset: 0,
     numlock: 0,
@@ -132,7 +132,7 @@ pub static ts: TestStruct = TestStruct {
 
 #[repr(C)]
 #[allow(dead_code)]
-pub struct TestStruct {
+pub struct Term {
     x: libc::c_int,
     y: libc::c_int,
     line: usize,

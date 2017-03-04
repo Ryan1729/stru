@@ -523,7 +523,7 @@ static void (*handler[LASTEvent])(XEvent *) = {
 /* Globals */
 static DC dc;
 static XWindow xw;
-static Term term;
+extern Term term;
 static CSIEscape csiescseq;
 static STREscape strescseq;
 static int cmdfd;
@@ -4391,30 +4391,6 @@ run(void)
 	}
 }
 
-typedef struct {
-	int row;      /* nb row */
-	int col;      /* nb col */
-	Line *line;   /* screen */
-	Line *alt;    /* alternate screen */
-	Line hist[histsize]; /* history buffer */
-	int histi;    /* history index */
-	int scr;      /* scroll back */
-	int *dirty;  /* dirtyness of lines */
-	XftGlyphFontSpec *specbuf; /* font spec buffer used for rendering */
-	TCursor c;    /* cursor */
-	int top;      /* top    scroll limit */
-	int bot;      /* bottom scroll limit */
-	int mode;     /* terminal mode flags */
-	int esc;      /* escape state flags */
-	char trantbl[4]; /* charset table translation */
-	int charset;  /* current charset */
-	int icharset; /* selected charset for sequence */
-	int numlock; /* lock numbers in keyboard */
-	int *tabs;
-} TestStruct;
-
-extern TestStruct ts;
-
 int
 st_main(int argc, char *argv[], char *opt_title_param, char *opt_class_param,
   char *opt_io_param, char *opt_geo_param, char *opt_font_param, char *opt_line_param,
@@ -4422,19 +4398,17 @@ st_main(int argc, char *argv[], char *opt_title_param, char *opt_class_param,
 {
 
   char* line_state;
-  if (ts.line == NULL) {
+  if (term.line == NULL) {
     line_state = "NULL";
   } else {
     line_state = "NON-NULL";
   }
 
-  printf("{ row: %d, col: %d, line: %s }\n", ts.row, ts.col, line_state);
+  printf("{ row: %d, col: %d, line: %s }\n", term.row, term.col, line_state);
 
   for (int i = 0; i < 4; i += 1) {
-    printf("trantbl[%d] =  %c\n", i, ts.trantbl[i] + 65);
+    printf("trantbl[%d] =  %c\n", i, term.trantbl[i] + 65);
   }
-
-  printf("sizeof(TestStruct): %zu, sizeof(Term): %zu\n", sizeof(TestStruct), sizeof(Term));
 
 
   opt_title = opt_title_param ? xstrdup(opt_title_param) : NULL;
@@ -4465,7 +4439,6 @@ st_main(int argc, char *argv[], char *opt_title_param, char *opt_class_param,
 
 	setlocale(LC_CTYPE, "");
 	XSetLocaleModifiers("");
-
   term = (Term){ .c = { .attr = { .fg = defaultfg, .bg = defaultbg } } };
   tresize(MAX(cols, 1), MAX(rows, 1));
   term.numlock = 1;
