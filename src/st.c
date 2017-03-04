@@ -4439,7 +4439,7 @@ st_main(int argc, char *argv[], char *opt_title_param, char *opt_class_param,
 
 	setlocale(LC_CTYPE, "");
 	XSetLocaleModifiers("");
-  term = (Term){ .c = { .attr = { .fg = defaultfg, .bg = defaultbg } } };
+
   tresize(MAX(cols, 1), MAX(rows, 1));
   term.numlock = 1;
 

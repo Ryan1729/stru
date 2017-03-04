@@ -74,6 +74,10 @@ fn usage(exe_path: &str) {
 #[allow(non_upper_case_globals)]
 //NOTE must be synced with config.h for as long as  that exists
 const histsize: usize = 16; //2000;
+#[allow(non_upper_case_globals)]
+const defaultfg: libc::c_uint = 7;
+#[allow(non_upper_case_globals)]
+const defaultbg: libc::c_uint = 0;
 
 pub type Rune = libc::uint32_t;
 
@@ -112,8 +116,8 @@ pub static mut term: Term = Term {
         attr: Glyph {
             u: 0,
             mode: 0,
-            fg: 0,
-            bg: 0,
+            fg: defaultfg,
+            bg: defaultbg,
         },
         x: 0,
         y: 0,
