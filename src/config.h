@@ -8,7 +8,7 @@
 static char font[] = "Liberation Mono:pixelsize=16:antialias=true:autohint=true";
 //static char font[] = "Fantasque Sans Mono:pixelsize=20:antialias=true:autohint=true";
 static int borderpx = 2;
-#define histsize 2000
+#define histsize 16
 
 /*
  * What program is execed by st depends of these precedence rules:
@@ -452,4 +452,3 @@ static char ascii_printable[] =
 	" !\"#$%&'()*+,-./0123456789:;<=>?"
 	"@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_"
 	"`abcdefghijklmnopqrstuvwxyz{|}~";
-

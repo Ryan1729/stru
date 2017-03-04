@@ -71,6 +71,90 @@ fn usage(exe_path: &str) {
          exe_path);
 }
 
+#[allow(non_upper_case_globals)]
+//NOTE must be synced with config.h for as long as  that exists
+const histsize: usize = 16; //2000;
+
+pub type Rune = libc::uint32_t;
+
+#[repr(C)]
+#[allow(dead_code)]
+pub struct Glyph {
+    u: Rune, /* character code */
+    mode: libc::c_ushort, /* attribute flags */
+    fg: libc::uint32_t, /* foreground  */
+    bg: libc::uint32_t, /* background  */
+}
+
+// pub type Line *Glyph;
+#[repr(C)]
+#[allow(dead_code)]
+pub struct TCursor {
+    attr: Glyph, /* current char attributes */
+    x: libc::c_int,
+    y: libc::c_int,
+    state: libc::c_char,
+}
+
+#[no_mangle]
+#[allow(non_upper_case_globals)]
+pub static ts: TestStruct = TestStruct {
+    x: 0,
+    y: 0,
+    line: 0,
+    alt: 0,
+    hist: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    histi: 0,
+    scr: 0,
+    dirty: 0,
+    specbuf: 0,
+    c: TCursor {
+        attr: Glyph {
+            u: 0,
+            mode: 0,
+            fg: 0,
+            bg: 0,
+        },
+        x: 0,
+        y: 0,
+        state: 0,
+    },
+    top: 0,
+    bot: 0,
+    mode: 0,
+    esc: 0,
+    trantbl: [0, 1, 2, 3],
+    charset: 0,
+    icharset: 0,
+    numlock: 0,
+    tabs: 0,
+};
+
+#[repr(C)]
+#[allow(dead_code)]
+pub struct TestStruct {
+    x: libc::c_int,
+    y: libc::c_int,
+    line: usize,
+    alt: usize,
+    hist: [usize; histsize],
+    histi: libc::c_int,
+    scr: libc::c_int,
+    dirty: usize,
+    specbuf: usize,
+    c: TCursor,
+    top: libc::c_int,
+    bot: libc::c_int,
+    mode: libc::c_int,
+    esc: libc::c_int,
+    trantbl: [u8; 4],
+    charset: libc::c_int,
+    icharset: libc::c_int,
+    numlock: libc::c_int,
+    tabs: usize,
+}
+
+
 fn main() {
     let mut args: Vec<String> = std::env::args().collect::<Vec<String>>();
 
