@@ -58,9 +58,45 @@ macro_rules! die {
         }};
 }
 
+macro_rules! limit {
+    ( $input: expr, $min : expr, $max: expr ) => {
+        if $input < $min {
+            $min
+        } else if $input > $max {
+            $max
+        } else {
+            $input
+        }
+    }
+}
+
+enum cursor_state {
+    CURSOR_DEFAULT = 0,
+    CURSOR_WRAPNEXT = 1,
+    CURSOR_ORIGIN = 2,
+}
+use cursor_state::*;
+
 #[no_mangle]
 pub extern "C" fn hello_rust() -> *const u8 {
     "Hello, world!\0".as_ptr()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn tmoveto(x: libc::c_int, y: libc::c_int) {
+    let mut miny;
+    let mut maxy;
+
+    if term.c.state & (CURSOR_ORIGIN as libc::c_char) != 0 {
+        miny = term.top;
+        maxy = term.bot;
+    } else {
+        miny = 0;
+        maxy = term.row - 1;
+    }
+    term.c.state &= !(CURSOR_WRAPNEXT as libc::c_char);
+    term.c.x = limit!(x, 0, term.col - 1);
+    term.c.y = limit!(y, miny, maxy);
 }
 
 fn basename(path: &str) -> &str {
@@ -108,8 +144,8 @@ pub struct TCursor {
 #[no_mangle]
 #[allow(non_upper_case_globals)]
 pub static mut term: Term = Term {
-    x: 0,
-    y: 0,
+    row: 0,
+    col: 0,
     line: 0,
     alt: 0,
     hist: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -142,8 +178,8 @@ pub static mut term: Term = Term {
 #[repr(C)]
 #[allow(dead_code)]
 pub struct Term {
-    x: libc::c_int,
-    y: libc::c_int,
+    row: libc::c_int,
+    col: libc::c_int,
     line: usize,
     alt: usize,
     hist: [usize; histsize],
@@ -281,6 +317,8 @@ and can be found at st.suckless.org\n",
 
     std::process::exit(exit_code);
 }
+
+
 
 fn to_ptr(possible_arg: Option<&CString>) -> *const libc::c_char {
     match possible_arg {

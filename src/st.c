@@ -1873,23 +1873,6 @@ tmoveato(int x, int y)
 }
 
 void
-tmoveto(int x, int y)
-{
-	int miny, maxy;
-
-	if (term.c.state & CURSOR_ORIGIN) {
-		miny = term.top;
-		maxy = term.bot;
-	} else {
-		miny = 0;
-		maxy = term.row - 1;
-	}
-	term.c.state &= ~CURSOR_WRAPNEXT;
-	term.c.x = LIMIT(x, 0, term.col-1);
-	term.c.y = LIMIT(y, miny, maxy);
-}
-
-void
 tsetchar(Rune u, Glyph *attr, int x, int y)
 {
 	static char *vt100_0[62] = { /* 0x41 - 0x7e */
