@@ -4391,6 +4391,8 @@ run(void)
 	}
 }
 
+extern char* hello_rust(void);
+
 int
 st_main(int argc, char *argv[], char *opt_title_param, char *opt_class_param,
   char *opt_io_param, char *opt_geo_param, char *opt_font_param, char *opt_line_param,
@@ -4441,7 +4443,8 @@ st_main(int argc, char *argv[], char *opt_title_param, char *opt_class_param,
 	XSetLocaleModifiers("");
 
   tresize(MAX(cols, 1), MAX(rows, 1));
-  term.numlock = 1;
+
+  puts(hello_rust());
 
   treset();
 

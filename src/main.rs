@@ -58,6 +58,11 @@ macro_rules! die {
         }};
 }
 
+#[no_mangle]
+pub extern "C" fn hello_rust() -> *const u8 {
+    "Hello, world!\0".as_ptr()
+}
+
 fn basename(path: &str) -> &str {
     path.rsplitn(2, "/").next().unwrap_or(path)
 }
@@ -130,7 +135,7 @@ pub static mut term: Term = Term {
     trantbl: [0, 0, 0, 0],
     charset: 0,
     icharset: 0,
-    numlock: 0,
+    numlock: 1,
     tabs: 0,
 };
 
