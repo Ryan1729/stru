@@ -70,6 +70,34 @@ macro_rules! limit {
     }
 }
 
+macro_rules! is_set_on {
+    ( $flag: expr, $field : expr) => {
+        $field & $flag != 0
+    };
+
+    ( $flag: expr, $field : expr, $number_type:ty) => {
+        $field & ($flag as $number_type) != 0
+    }
+}
+
+macro_rules! new {
+    (TCursor) => {
+        TCursor {
+            attr: Glyph {
+                u: 0,
+                mode: 0,
+                fg: defaultfg,
+                bg: defaultbg,
+            },
+            x: 0,
+            y: 0,
+            state: 0,
+        }
+    }
+}
+
+#[allow(dead_code)]
+#[allow(non_camel_case_types)]
 enum cursor_state {
     CURSOR_DEFAULT = 0,
     CURSOR_WRAPNEXT = 1,
@@ -77,15 +105,59 @@ enum cursor_state {
 }
 use cursor_state::*;
 
+#[allow(dead_code)]
+#[allow(non_camel_case_types)]
+enum term_mode {
+    MODE_WRAP = 1 << 0,
+    MODE_INSERT = 1 << 1,
+    MODE_APPKEYPAD = 1 << 2,
+    MODE_ALTSCREEN = 1 << 3,
+    MODE_CRLF = 1 << 4,
+    MODE_MOUSEBTN = 1 << 5,
+    MODE_MOUSEMOTION = 1 << 6,
+    MODE_REVERSE = 1 << 7,
+    MODE_KBDLOCK = 1 << 8,
+    MODE_HIDE = 1 << 9,
+    MODE_ECHO = 1 << 10,
+    MODE_APPCURSOR = 1 << 11,
+    MODE_MOUSESGR = 1 << 12,
+    MODE_8BIT = 1 << 13,
+    MODE_BLINK = 1 << 14,
+    MODE_FBLINK = 1 << 15,
+    MODE_FOCUS = 1 << 16,
+    MODE_MOUSEX10 = 1 << 17,
+    MODE_MOUSEMANY = 1 << 18,
+    MODE_BRCKTPASTE = 1 << 19,
+    MODE_PRINT = 1 << 20,
+    MODE_MOUSE = MODE_MOUSEBTN as isize
+        |MODE_MOUSEMOTION as isize
+        |MODE_MOUSEX10 as isize
+        |MODE_MOUSEMANY as isize,
+}
+use term_mode::*;
+
+static mut CURSOR_STORAGE: [TCursor; 2] = [new!(TCursor), new!(TCursor)];
+
 #[no_mangle]
-pub extern "C" fn hello_rust() -> *const u8 {
-    "Hello, world!\0".as_ptr()
+pub unsafe extern "C" fn tsavecursor() {
+    let alt = is_set_on!(MODE_ALTSCREEN, term.mode, libc::c_int) as usize;
+
+    CURSOR_STORAGE[alt] = term.c.clone();
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn tloadcursor() {
+    let alt = is_set_on!(MODE_ALTSCREEN, term.mode, libc::c_int) as usize;
+
+    term.c = CURSOR_STORAGE[alt];
+    tmoveto(CURSOR_STORAGE[alt].x, CURSOR_STORAGE[alt].y);
+}
+
+
+#[no_mangle]
 pub unsafe extern "C" fn tmoveto(x: libc::c_int, y: libc::c_int) {
-    let mut miny;
-    let mut maxy;
+    let miny;
+    let maxy;
 
     if term.c.state & (CURSOR_ORIGIN as libc::c_char) != 0 {
         miny = term.top;
@@ -123,7 +195,7 @@ const defaultbg: libc::c_uint = 0;
 pub type Rune = libc::uint32_t;
 
 #[repr(C)]
-#[allow(dead_code)]
+#[derive(Clone, Copy)]
 pub struct Glyph {
     u: Rune, /* character code */
     mode: libc::c_ushort, /* attribute flags */
@@ -133,13 +205,15 @@ pub struct Glyph {
 
 // pub type Line *Glyph;
 #[repr(C)]
-#[allow(dead_code)]
+#[derive(Clone, Copy)]
 pub struct TCursor {
     attr: Glyph, /* current char attributes */
     x: libc::c_int,
     y: libc::c_int,
     state: libc::c_char,
 }
+
+
 
 #[no_mangle]
 #[allow(non_upper_case_globals)]
@@ -153,17 +227,7 @@ pub static mut term: Term = Term {
     scr: 0,
     dirty: 0,
     specbuf: 0,
-    c: TCursor {
-        attr: Glyph {
-            u: 0,
-            mode: 0,
-            fg: defaultfg,
-            bg: defaultbg,
-        },
-        x: 0,
-        y: 0,
-        state: 0,
-    },
+    c: new!(TCursor),
     top: 0,
     bot: 0,
     mode: 0,

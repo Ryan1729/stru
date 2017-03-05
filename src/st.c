@@ -69,10 +69,8 @@
 #define ISCONTROLC1(c)		(BETWEEN(c, 0x80, 0x9f))
 #define ISCONTROL(c)		(ISCONTROLC0(c) || ISCONTROLC1(c))
 #define ISDELIM(u)		(utf8strchr(worddelimiters, u) != NULL)
-#define LIMIT(x, a, b)		(x) = (x) < (a) ? (a) : (x) > (b) ? (b) : (x)
 #define ATTRCMP(a, b)		((a).mode != (b).mode || (a).fg != (b).fg || \
 				(a).bg != (b).bg)
-#define IS_SET(flag)		((term.mode & (flag)) != 0)
 #define TIMEDIFF(t1, t2)	((t1.tv_sec-t2.tv_sec)*1000 + \
 				(t1.tv_nsec-t2.tv_nsec)/1E6)
 #define MODBIT(x, set, bit)	((set) ? ((x) |= (bit)) : ((x) &= ~(bit)))
@@ -84,6 +82,9 @@
 #define TRUEBLUE(x)		(((x) & 0xff) << 8)
 #define TLINE(y)		((y) < term.scr ? term.hist[((y) + term.histi - term.scr \
 				+ histsize + 1) % histsize] : term.line[(y) - term.scr])
+/* transferred macros */
+#define LIMIT(x, a, b)		(x) = (x) < (a) ? (a) : (x) > (b) ? (b) : (x)
+#define IS_SET(flag)		((term.mode & (flag)) != 0)
 
 
 enum glyph_attribute {
@@ -401,7 +402,7 @@ static void tdeleteline(int);
 static void tinsertblank(int);
 static void tinsertblankline(int);
 static int tlinelen(int);
-static void tmoveto(int, int);
+extern void tmoveto(int, int);
 static void tmoveato(int, int);
 static void tnewline(int);
 static void tputtab(int);
@@ -493,6 +494,12 @@ static ssize_t xwrite(int, const char *, size_t);
 static void *xmalloc(size_t);
 static void *xrealloc(void *, size_t);
 static char *xstrdup(char *);
+
+
+
+/* created for port functions */
+extern void tsavecursor(void);
+extern void tloadcursor(void);
 
 static void (*handler[LASTEvent])(XEvent *) = {
 	[KeyPress] = kpress,
@@ -1653,14 +1660,10 @@ tfulldirt(void)
 void
 tcursor(int mode)
 {
-	static TCursor c[2];
-	int alt = IS_SET(MODE_ALTSCREEN);
-
 	if (mode == CURSOR_SAVE) {
-		c[alt] = term.c;
+		tsavecursor();
 	} else if (mode == CURSOR_LOAD) {
-		term.c = c[alt];
-		tmoveto(c[alt].x, c[alt].y);
+    tloadcursor();
 	}
 }
 
@@ -4374,8 +4377,6 @@ run(void)
 	}
 }
 
-extern char* hello_rust(void);
-
 int
 st_main(int argc, char *argv[], char *opt_title_param, char *opt_class_param,
   char *opt_io_param, char *opt_geo_param, char *opt_font_param, char *opt_line_param,
@@ -4426,8 +4427,6 @@ st_main(int argc, char *argv[], char *opt_title_param, char *opt_class_param,
 	XSetLocaleModifiers("");
 
   tresize(MAX(cols, 1), MAX(rows, 1));
-
-  puts(hello_rust());
 
   treset();
 
