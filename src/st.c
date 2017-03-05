@@ -390,7 +390,7 @@ static void tprinter(char *, size_t);
 static void tdumpsel(void);
 static void tdumpline(int);
 static void tdump(void);
-static void tclearregion(int, int, int, int);
+void tclearregion(int, int, int, int);
 static void tdeletechar(int);
 static void tdeleteline(int);
 static void tinsertblank(int);
@@ -401,7 +401,7 @@ static void tmoveato(int, int);
 static void tnewline(int);
 static void tputtab(int);
 static void tputc(Rune);
-static void treset(void);
+extern void treset(void);
 static void tresize(int, int);
 static void tscrollup(int, int, int);
 static void tscrolldown(int, int, int);
@@ -1642,34 +1642,6 @@ tsetdirtattr(int attr)
 				break;
 			}
 		}
-	}
-}
-
-void
-treset(void)
-{
-	uint i;
-
-	term.c = (TCursor){{
-		.mode = ATTR_NULL,
-		.fg = defaultfg,
-		.bg = defaultbg
-	}, .x = 0, .y = 0, .state = CURSOR_DEFAULT};
-
-	memset(term.tabs, 0, term.col * sizeof(*term.tabs));
-	for (i = tabspaces; i < term.col; i += tabspaces)
-		term.tabs[i] = 1;
-	term.top = 0;
-	term.bot = term.row - 1;
-	term.mode = MODE_WRAP;
-	memset(term.trantbl, CS_USA, sizeof(term.trantbl));
-	term.charset = 0;
-
-	for (i = 0; i < 2; i++) {
-		tmoveto(0, 0);
-		tsavecursor();
-		tclearregion(0, 0, term.col-1, term.row-1);
-		tswapscreen();
 	}
 }
 

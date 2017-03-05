@@ -1,8 +1,11 @@
 #![feature(link_args)]
+#![allow(non_upper_case_globals)]
 extern crate libc;
 use libc::*;
 
 use std::ffi::CString;
+use std::mem;
+use std::ptr;
 
 // "the `link_args` attribute is not portable across platforms" but that's fine,
 // I just need it for the purposes of the port and only until I can move everything
@@ -24,6 +27,7 @@ extern "C" {
                -> c_int;
 
     fn tsetdirt(top: c_int, bot: c_int);
+    fn tclearregion(x1: c_int, y1: c_int, x2: c_int, y2: c_int);
 }
 
 macro_rules! arg_set {
@@ -88,13 +92,13 @@ macro_rules! new {
         TCursor {
             attr: Glyph {
                 u: 0,
-                mode: 0,
+                mode: ATTR_NULL as u16,
                 fg: defaultfg,
                 bg: defaultbg,
             },
             x: 0,
             y: 0,
-            state: 0,
+            state: CURSOR_DEFAULT as c_char,
         }
     }
 }
@@ -139,6 +143,38 @@ enum term_mode {
 }
 use term_mode::*;
 
+#[allow(dead_code)]
+#[allow(non_camel_case_types)]
+enum glyph_attribute {
+    ATTR_NULL = 0,
+    ATTR_BOLD = 1 << 0,
+    ATTR_FAINT = 1 << 1,
+    ATTR_ITALIC = 1 << 2,
+    ATTR_UNDERLINE = 1 << 3,
+    ATTR_BLINK = 1 << 4,
+    ATTR_REVERSE = 1 << 5,
+    ATTR_INVISIBLE = 1 << 6,
+    ATTR_STRUCK = 1 << 7,
+    ATTR_WRAP = 1 << 8,
+    ATTR_WIDE = 1 << 9,
+    ATTR_WDUMMY = 1 << 10,
+    ATTR_BOLD_FAINT = ATTR_BOLD as isize | ATTR_FAINT as isize,
+}
+use glyph_attribute::*;
+
+#[allow(dead_code)]
+#[allow(non_camel_case_types)]
+enum charset {
+    CS_GRAPHIC0 = 0,
+    CS_GRAPHIC1 = 1,
+    CS_UK = 2,
+    CS_USA = 3,
+    CS_MULTI = 4,
+    CS_GER = 5,
+    CS_FIN = 6,
+}
+use charset::*;
+
 static mut CURSOR_STORAGE: [TCursor; 2] = [new!(TCursor), new!(TCursor)];
 
 #[no_mangle]
@@ -173,6 +209,36 @@ pub unsafe extern "C" fn tswapscreen() {
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn treset() {
+
+    term.c = new!(TCursor);
+
+    libc::memset(term.tabs as *mut c_void,
+                 0,
+                 term.col as size_t * mem::size_of::<*mut c_int>() as size_t);
+
+    //TODO reduce casting here
+    let mut i: c_uint = tabspaces;
+    while i < term.col as c_uint {
+        ptr::write(term.tabs.offset(i as isize), 1);
+        i += tabspaces;
+    }
+
+    term.top = 0;
+    term.bot = term.row - 1;
+    term.mode = MODE_WRAP as c_int;
+    term.trantbl = [CS_USA as c_char, CS_USA as c_char, CS_USA as c_char, CS_USA as c_char];
+    term.charset = 0;
+
+    for _ in 0..2 {
+        tmoveto(0, 0);
+        tsavecursor();
+        tclearregion(0, 0, term.col - 1, term.row - 1);
+        tswapscreen();
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn tmoveto(x: c_int, y: c_int) {
     let miny;
     let maxy;
@@ -202,13 +268,27 @@ fn usage(exe_path: &str) {
          exe_path);
 }
 
-#[allow(non_upper_case_globals)]
 //NOTE must be synced with config.h for as long as  that exists
 const histsize: usize = 16; //2000;
-#[allow(non_upper_case_globals)]
 const defaultfg: c_uint = 7;
-#[allow(non_upper_case_globals)]
 const defaultbg: c_uint = 0;
+/*
+ * spaces per tab
+ *
+ * When you are changing this value, don't forget to adapt the »it« value in
+ * the st.info and appropriately install the st.info in the environment where
+ * you use this st version.
+ *
+ *	it#$tabspaces,
+ *
+ * Secondly make sure your kernel is not expanding tabs. When running `stty
+ * -a` »tab0« should appear. You can tell the terminal to not expand tabs by
+ *  running following command:
+ *
+ *	stty tabs
+ */
+const tabspaces: c_uint = 8;
+
 
 pub type Rune = uint32_t;
 
@@ -253,7 +333,7 @@ pub static mut term: Term = Term {
     charset: 0,
     icharset: 0,
     numlock: 1,
-    tabs: 0,
+    tabs: 0 as *mut c_int,
 };
 
 #[repr(C)]
@@ -273,11 +353,11 @@ pub struct Term {
     bot: c_int,
     mode: c_int,
     esc: c_int,
-    trantbl: [u8; 4],
+    trantbl: [c_char; 4],
     charset: c_int,
     icharset: c_int,
     numlock: c_int,
-    tabs: usize,
+    tabs: *mut c_int,
 }
 
 
