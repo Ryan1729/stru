@@ -22,7 +22,6 @@ extern "C" {
                opt_line: *const c_char,
                opt_name: *const c_char,
                opt_embed: *const c_char,
-               opt_allow_alt_screen: c_int,
                opt_is_fixed: c_int)
                -> c_int;
 
@@ -360,6 +359,8 @@ pub struct Term {
     tabs: *mut c_int,
 }
 
+#[no_mangle]
+pub static mut allowaltscreen: c_int = 1;
 
 fn main() {
     let mut args: Vec<String> = std::env::args().collect::<Vec<String>>();
@@ -455,7 +456,10 @@ and can be found at st.suckless.org\n",
         }
     }
 
+
     unsafe {
+        allowaltscreen = if opt_allow_alt_screen { 1 } else { 0 } as c_int;
+
         exit_code = st_main(c_args.len() as c_int,
                             c_args.as_ptr(),
                             to_ptr(opt_title.as_ref()),
@@ -466,7 +470,6 @@ and can be found at st.suckless.org\n",
                             to_ptr(opt_line.as_ref()),
                             to_ptr(opt_name.as_ref()),
                             to_ptr(opt_embed.as_ref()),
-                            if opt_allow_alt_screen { 1 } else { 0 } as c_int,
                             if opt_is_fixed { 1 } else { 0 } as c_int);
     };
 

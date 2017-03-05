@@ -4318,7 +4318,7 @@ run(void)
 int
 st_main(int argc, char *argv[], char *opt_title_param, char *opt_class_param,
   char *opt_io_param, char *opt_geo_param, char *opt_font_param, char *opt_line_param,
-  char *opt_name_param, char *opt_embed_param, int allowaltscreen_param, int isfixed_param)
+  char *opt_name_param, char *opt_embed_param, int isfixed_param)
 {
   printf("in c");
 
@@ -4330,8 +4330,7 @@ st_main(int argc, char *argv[], char *opt_title_param, char *opt_class_param,
   opt_name = opt_name_param ? xstrdup(opt_name_param) : NULL;
   opt_embed = opt_embed_param ? xstrdup(opt_embed_param) : NULL;
 
-  //from config.h
-  allowaltscreen = allowaltscreen_param ? 1 : 0;
+
 
 	uint cols = 80, rows = 24;
 
