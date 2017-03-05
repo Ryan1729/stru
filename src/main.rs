@@ -162,6 +162,17 @@ pub unsafe extern "C" fn tfulldirt() {
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn tswapscreen() {
+    let tmp = term.line;
+
+    term.line = term.alt;
+    term.alt = tmp;
+
+    term.mode ^= MODE_ALTSCREEN as c_int;
+    tfulldirt();
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn tmoveto(x: c_int, y: c_int) {
     let miny;
     let maxy;
@@ -210,7 +221,6 @@ pub struct Glyph {
     bg: uint32_t, /* background  */
 }
 
-// pub type Line *Glyph;
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct TCursor {
@@ -344,14 +354,8 @@ and can be found at st.suckless.org\n",
             _ => usage(&exe_path),
         }
 
-
     }
-
-
-
     let opt_cmd = args.split_at(cmd_start).1.to_owned();
-
-    println!("opt_cmd {:?} args {:?}, ", opt_cmd, args);
 
     //http://stackoverflow.com/a/34379937/4496839
     // create a vector of zero terminated strings
@@ -359,7 +363,7 @@ and can be found at st.suckless.org\n",
         .cloned()
         .map(|arg| CString::new((*arg).to_string()).unwrap())
         .collect::<Vec<CString>>();
-    println!("{:?}", zt_args);
+
     // convert the strings to raw pointers
     let c_args = zt_args.iter().map(|arg| arg.as_ptr()).collect::<Vec<*const c_char>>();
     let exit_code;
@@ -388,8 +392,6 @@ and can be found at st.suckless.org\n",
 
     std::process::exit(exit_code);
 }
-
-
 
 fn to_ptr(possible_arg: Option<&CString>) -> *const c_char {
     match possible_arg {

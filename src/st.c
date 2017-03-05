@@ -408,7 +408,7 @@ static void tscrolldown(int, int, int);
 static void tsetattr(int *, int);
 static void tsetchar(Rune, Glyph *, int, int);
 static void tsetscroll(int, int);
-static void tswapscreen(void);
+extern void tswapscreen(void);
 void tsetdirt(int, int);
 static void tsetdirtattr(int);
 static void tsetmode(int, int, int *, int);
@@ -1671,19 +1671,6 @@ treset(void)
 		tclearregion(0, 0, term.col-1, term.row-1);
 		tswapscreen();
 	}
-}
-
-
-
-void
-tswapscreen(void)
-{
-	Line *tmp = term.line;
-
-	term.line = term.alt;
-	term.alt = tmp;
-	term.mode ^= MODE_ALTSCREEN;
-	tfulldirt();
 }
 
 void
@@ -4361,20 +4348,7 @@ st_main(int argc, char *argv[], char *opt_title_param, char *opt_class_param,
   char *opt_io_param, char *opt_geo_param, char *opt_font_param, char *opt_line_param,
   char *opt_name_param, char *opt_embed_param, int allowaltscreen_param, int isfixed_param)
 {
-
-  char* line_state;
-  if (term.line == NULL) {
-    line_state = "NULL";
-  } else {
-    line_state = "NON-NULL";
-  }
-
-  printf("{ row: %d, col: %d, line: %s }\n", term.row, term.col, line_state);
-
-  for (int i = 0; i < 4; i += 1) {
-    printf("trantbl[%d] =  %c\n", i, term.trantbl[i] + 65);
-  }
-
+  printf("in c");
 
   opt_title = opt_title_param ? xstrdup(opt_title_param) : NULL;
   opt_class = opt_class_param ? xstrdup(opt_class_param) : NULL;
