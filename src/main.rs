@@ -1,5 +1,6 @@
 #![feature(link_args)]
 extern crate libc;
+use libc::*;
 
 use std::ffi::CString;
 
@@ -8,19 +9,21 @@ use std::ffi::CString;
 // over to the rust X11 bindings
 #[link_args = "-L/usr/lib -lc -L/usr/X11R6/lib -lm -lrt -lX11 -lutil -lXft -lfontconfig -lfreetype"]
 extern "C" {
-    fn st_main(argc: libc::c_int,
-               argv: *const *const libc::c_char,
-               opt_title: *const libc::c_char,
-               opt_class: *const libc::c_char,
-               opt_io: *const libc::c_char,
-               opt_geo: *const libc::c_char,
-               opt_font: *const libc::c_char,
-               opt_line: *const libc::c_char,
-               opt_name: *const libc::c_char,
-               opt_embed: *const libc::c_char,
-               opt_allow_alt_screen: libc::c_int,
-               opt_is_fixed: libc::c_int)
-               -> libc::c_int;
+    fn st_main(argc: c_int,
+               argv: *const *const c_char,
+               opt_title: *const c_char,
+               opt_class: *const c_char,
+               opt_io: *const c_char,
+               opt_geo: *const c_char,
+               opt_font: *const c_char,
+               opt_line: *const c_char,
+               opt_name: *const c_char,
+               opt_embed: *const c_char,
+               opt_allow_alt_screen: c_int,
+               opt_is_fixed: c_int)
+               -> c_int;
+
+    fn tsetdirt(top: c_int, bot: c_int);
 }
 
 macro_rules! arg_set {
@@ -140,33 +143,37 @@ static mut CURSOR_STORAGE: [TCursor; 2] = [new!(TCursor), new!(TCursor)];
 
 #[no_mangle]
 pub unsafe extern "C" fn tsavecursor() {
-    let alt = is_set_on!(MODE_ALTSCREEN, term.mode, libc::c_int) as usize;
+    let alt = is_set_on!(MODE_ALTSCREEN, term.mode, c_int) as usize;
 
     CURSOR_STORAGE[alt] = term.c.clone();
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn tloadcursor() {
-    let alt = is_set_on!(MODE_ALTSCREEN, term.mode, libc::c_int) as usize;
+    let alt = is_set_on!(MODE_ALTSCREEN, term.mode, c_int) as usize;
 
     term.c = CURSOR_STORAGE[alt];
     tmoveto(CURSOR_STORAGE[alt].x, CURSOR_STORAGE[alt].y);
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn tfulldirt() {
+    tsetdirt(0, term.row - 1);
+}
 
 #[no_mangle]
-pub unsafe extern "C" fn tmoveto(x: libc::c_int, y: libc::c_int) {
+pub unsafe extern "C" fn tmoveto(x: c_int, y: c_int) {
     let miny;
     let maxy;
 
-    if term.c.state & (CURSOR_ORIGIN as libc::c_char) != 0 {
+    if term.c.state & (CURSOR_ORIGIN as c_char) != 0 {
         miny = term.top;
         maxy = term.bot;
     } else {
         miny = 0;
         maxy = term.row - 1;
     }
-    term.c.state &= !(CURSOR_WRAPNEXT as libc::c_char);
+    term.c.state &= !(CURSOR_WRAPNEXT as c_char);
     term.c.x = limit!(x, 0, term.col - 1);
     term.c.y = limit!(y, miny, maxy);
 }
@@ -188,19 +195,19 @@ fn usage(exe_path: &str) {
 //NOTE must be synced with config.h for as long as  that exists
 const histsize: usize = 16; //2000;
 #[allow(non_upper_case_globals)]
-const defaultfg: libc::c_uint = 7;
+const defaultfg: c_uint = 7;
 #[allow(non_upper_case_globals)]
-const defaultbg: libc::c_uint = 0;
+const defaultbg: c_uint = 0;
 
-pub type Rune = libc::uint32_t;
+pub type Rune = uint32_t;
 
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct Glyph {
     u: Rune, /* character code */
-    mode: libc::c_ushort, /* attribute flags */
-    fg: libc::uint32_t, /* foreground  */
-    bg: libc::uint32_t, /* background  */
+    mode: c_ushort, /* attribute flags */
+    fg: uint32_t, /* foreground  */
+    bg: uint32_t, /* background  */
 }
 
 // pub type Line *Glyph;
@@ -208,9 +215,9 @@ pub struct Glyph {
 #[derive(Clone, Copy)]
 pub struct TCursor {
     attr: Glyph, /* current char attributes */
-    x: libc::c_int,
-    y: libc::c_int,
-    state: libc::c_char,
+    x: c_int,
+    y: c_int,
+    state: c_char,
 }
 
 
@@ -242,24 +249,24 @@ pub static mut term: Term = Term {
 #[repr(C)]
 #[allow(dead_code)]
 pub struct Term {
-    row: libc::c_int,
-    col: libc::c_int,
+    row: c_int,
+    col: c_int,
     line: usize,
     alt: usize,
     hist: [usize; histsize],
-    histi: libc::c_int,
-    scr: libc::c_int,
+    histi: c_int,
+    scr: c_int,
     dirty: usize,
     specbuf: usize,
     c: TCursor,
-    top: libc::c_int,
-    bot: libc::c_int,
-    mode: libc::c_int,
-    esc: libc::c_int,
+    top: c_int,
+    bot: c_int,
+    mode: c_int,
+    esc: c_int,
     trantbl: [u8; 4],
-    charset: libc::c_int,
-    icharset: libc::c_int,
-    numlock: libc::c_int,
+    charset: c_int,
+    icharset: c_int,
+    numlock: c_int,
     tabs: usize,
 }
 
@@ -354,7 +361,7 @@ and can be found at st.suckless.org\n",
         .collect::<Vec<CString>>();
     println!("{:?}", zt_args);
     // convert the strings to raw pointers
-    let c_args = zt_args.iter().map(|arg| arg.as_ptr()).collect::<Vec<*const libc::c_char>>();
+    let c_args = zt_args.iter().map(|arg| arg.as_ptr()).collect::<Vec<*const c_char>>();
     let exit_code;
 
     if c_args.len() > 0 {
@@ -365,7 +372,7 @@ and can be found at st.suckless.org\n",
     }
 
     unsafe {
-        exit_code = st_main(c_args.len() as libc::c_int,
+        exit_code = st_main(c_args.len() as c_int,
                             c_args.as_ptr(),
                             to_ptr(opt_title.as_ref()),
                             to_ptr(opt_class.as_ref()),
@@ -375,8 +382,8 @@ and can be found at st.suckless.org\n",
                             to_ptr(opt_line.as_ref()),
                             to_ptr(opt_name.as_ref()),
                             to_ptr(opt_embed.as_ref()),
-                            if opt_allow_alt_screen { 1 } else { 0 } as libc::c_int,
-                            if opt_is_fixed { 1 } else { 0 } as libc::c_int);
+                            if opt_allow_alt_screen { 1 } else { 0 } as c_int,
+                            if opt_is_fixed { 1 } else { 0 } as c_int);
     };
 
     std::process::exit(exit_code);
@@ -384,7 +391,7 @@ and can be found at st.suckless.org\n",
 
 
 
-fn to_ptr(possible_arg: Option<&CString>) -> *const libc::c_char {
+fn to_ptr(possible_arg: Option<&CString>) -> *const c_char {
     match possible_arg {
         Some(arg) => arg.as_ptr(),
         None => std::ptr::null(),

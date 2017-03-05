@@ -409,10 +409,10 @@ static void tsetattr(int *, int);
 static void tsetchar(Rune, Glyph *, int, int);
 static void tsetscroll(int, int);
 static void tswapscreen(void);
-static void tsetdirt(int, int);
+void tsetdirt(int, int);
 static void tsetdirtattr(int);
 static void tsetmode(int, int, int *, int);
-static void tfulldirt(void);
+extern void tfulldirt(void);
 static void techo(Rune);
 static void tcontrolcode(uchar );
 static void tdectest(char );
@@ -1643,12 +1643,6 @@ tsetdirtattr(int attr)
 			}
 		}
 	}
-}
-
-void
-tfulldirt(void)
-{
-	tsetdirt(0, term.row-1);
 }
 
 void
