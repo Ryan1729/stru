@@ -10,6 +10,8 @@ use x11::xft;
 use std::ffi::CString;
 use std::mem;
 use std::ptr;
+use std::cmp::max;
+
 
 // "the `link_args` attribute is not portable across platforms" but that's fine,
 // I just need it for the purposes of the port and only until I can move everything
@@ -21,15 +23,14 @@ extern "C" {
                opt_title: *const c_char,
                opt_class: *const c_char,
                opt_io: *const c_char,
-               opt_geo: *const c_char,
                opt_font: *const c_char,
                opt_line: *const c_char,
                opt_name: *const c_char,
-               opt_embed: *const c_char,
-               opt_is_fixed: c_int)
+               opt_embed: *const c_char)
                -> c_int;
 
     fn tsetdirt(top: c_int, bot: c_int);
+    fn tresize(col: c_int, row: c_int);
     fn tclearregion(x1: c_int, y1: c_int, x2: c_int, y2: c_int);
 }
 
@@ -291,6 +292,7 @@ const defaultbg: c_uint = 0;
  *	stty tabs
  */
 const tabspaces: c_uint = 8;
+const cursorshape: c_int = 2;
 
 type Draw = *mut xft::XftDraw;
 
@@ -369,7 +371,7 @@ pub static mut xw: XWindow = XWindow {
     ch: 0,
     cw: 0,
     state: 0,
-    cursor: 0,
+    cursor: cursorshape,
 };
 
 pub type Rune = uint32_t;
@@ -538,21 +540,30 @@ and can be found at st.suckless.org\n",
         }
     }
 
-
     unsafe {
         allowaltscreen = if opt_allow_alt_screen { 1 } else { 0 } as c_int;
+
+        xw.isfixed = if opt_is_fixed { 1 } else { 0 } as c_int;
+
+        let mut cols = 80;
+        let mut rows = 24;
+
+        if let Some(geo) = opt_geo {
+            xw.gm = xlib::XParseGeometry(geo.as_ptr(), &mut xw.l, &mut xw.t, &mut cols, &mut rows);
+        }
+
+        tresize(max(cols as c_int, 1), max(rows as c_int, 1));
+        treset();
 
         exit_code = st_main(c_args.len() as c_int,
                             c_args.as_ptr(),
                             to_ptr(opt_title.as_ref()),
                             to_ptr(opt_class.as_ref()),
                             to_ptr(opt_io.as_ref()),
-                            to_ptr(opt_geo.as_ref()),
                             to_ptr(opt_font.as_ref()),
                             to_ptr(opt_line.as_ref()),
                             to_ptr(opt_name.as_ref()),
-                            to_ptr(opt_embed.as_ref()),
-                            if opt_is_fixed { 1 } else { 0 } as c_int);
+                            to_ptr(opt_embed.as_ref()));
     };
 
     std::process::exit(exit_code);

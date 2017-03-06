@@ -402,7 +402,7 @@ static void tnewline(int);
 static void tputtab(int);
 static void tputc(Rune);
 extern void treset(void);
-static void tresize(int, int);
+void tresize(int, int);
 static void tscrollup(int, int, int);
 static void tscrolldown(int, int, int);
 static void tsetattr(int *, int);
@@ -4317,8 +4317,8 @@ run(void)
 
 int
 st_main(int argc, char *argv[], char *opt_title_param, char *opt_class_param,
-  char *opt_io_param, char *opt_geo_param, char *opt_font_param, char *opt_line_param,
-  char *opt_name_param, char *opt_embed_param, int isfixed_param)
+  char *opt_io_param, char *opt_font_param, char *opt_line_param,
+  char *opt_name_param, char *opt_embed_param)
 {
   printf("in c");
 
@@ -4331,17 +4331,6 @@ st_main(int argc, char *argv[], char *opt_title_param, char *opt_class_param,
   opt_embed = opt_embed_param ? xstrdup(opt_embed_param) : NULL;
 
 
-
-	uint cols = 80, rows = 24;
-
-	xw.l = xw.t = 0;
-	xw.isfixed = isfixed_param ? 1 : False;
-	xw.cursor = cursorshape;
-
-  if (opt_geo_param) {
-    xw.gm = XParseGeometry(xstrdup(opt_geo_param),&xw.l, &xw.t, &cols, &rows);
-  }
-
 	if (argc > 0) {
 		/* eat all remaining arguments */
 		opt_cmd = argv;
@@ -4349,10 +4338,6 @@ st_main(int argc, char *argv[], char *opt_title_param, char *opt_class_param,
 
 	setlocale(LC_CTYPE, "");
 	XSetLocaleModifiers("");
-
-  tresize(MAX(cols, 1), MAX(rows, 1));
-
-  treset();
 
 	xinit();
 	selinit();
