@@ -438,7 +438,8 @@ static void xloadcols(void);
 static int xsetcolorname(int, const char *);
 static int xgeommasktogravity(int);
 static int xloadfont(Font *, FcPattern *);
-static void xloadfonts(char *, double);
+extern void xloadfonts(char *, double);
+void loadfonts(double);
 static void xsettitle(char *);
 static void xresettitle(void);
 static void xsetpointermotion(int);
@@ -540,7 +541,6 @@ static char *opt_name  = NULL;
 static char *opt_title = NULL;
 static int oldbutton   = 3; /* button event on startup: 3 = release */
 
-static char *usedfont = NULL;
 static double usedfontsize = 0;
 static double defaultfontsize = 0;
 
@@ -3407,7 +3407,7 @@ void
 xzoomabs(const Arg *arg)
 {
 	xunloadfonts();
-	xloadfonts(usedfont, arg->f);
+	loadfonts(arg->f);
 	cresize(0, 0);
 	ttyresize();
 	redraw();
@@ -3443,7 +3443,7 @@ xinit(void)
 	if (!FcInit())
 		die("Could not init fontconfig.\n");
 
-	xloadfonts(usedfont, 0);
+	loadfonts(0);
 
 	/* colors */
 	xw.cmap = XDefaultColormap(xw.dpy, xw.scr);
@@ -4315,7 +4315,7 @@ run(void)
 
 int
 st_main(int argc, char *argv[], char *opt_title_param, char *opt_class_param,
-  char *opt_io_param, char *opt_font_param, char *opt_line_param,
+  char *opt_io_param, char *opt_line_param,
   char *opt_name_param, char *opt_embed_param)
 {
   printf("in c");
@@ -4323,7 +4323,6 @@ st_main(int argc, char *argv[], char *opt_title_param, char *opt_class_param,
   opt_title = opt_title_param ? xstrdup(opt_title_param) : NULL;
   opt_class = opt_class_param ? xstrdup(opt_class_param) : NULL;
   opt_io = opt_io_param ? xstrdup(opt_io_param) : NULL;
-  usedfont = (opt_font_param == NULL)? font : xstrdup(opt_font_param);
   opt_line = opt_line_param ? xstrdup(opt_line_param) : NULL;
   opt_name = opt_name_param ? xstrdup(opt_name_param) : NULL;
   opt_embed = opt_embed_param ? xstrdup(opt_embed_param) : NULL;

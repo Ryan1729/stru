@@ -1,5 +1,8 @@
 #![feature(link_args)]
+#![feature(drop_types_in_const)]
+
 #![allow(non_upper_case_globals)]
+
 extern crate libc;
 use libc::*;
 
@@ -23,11 +26,12 @@ extern "C" {
                opt_title: *const c_char,
                opt_class: *const c_char,
                opt_io: *const c_char,
-               opt_font: *const c_char,
                opt_line: *const c_char,
                opt_name: *const c_char,
                opt_embed: *const c_char)
                -> c_int;
+
+    fn xloadfonts(fontstr: *const c_char, fontsize: c_double);
 
     fn tsetdirt(top: c_int, bot: c_int);
     fn tresize(col: c_int, row: c_int);
@@ -201,6 +205,13 @@ pub unsafe extern "C" fn tfulldirt() {
     tsetdirt(0, term.row - 1);
 }
 
+static mut usedfont: Option<CString> = None;
+
+#[no_mangle]
+pub unsafe extern "C" fn loadfonts(fontsize: c_double) {
+    xloadfonts(to_ptr(usedfont.as_ref()), fontsize);
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn tswapscreen() {
     let tmp = term.line;
@@ -293,6 +304,7 @@ const defaultbg: c_uint = 0;
  */
 const tabspaces: c_uint = 8;
 const cursorshape: c_int = 2;
+const defaultfont: &'static str = "Liberation Mono:pixelsize=16:antialias=true:autohint=true";
 
 type Draw = *mut xft::XftDraw;
 
@@ -555,12 +567,17 @@ and can be found at st.suckless.org\n",
         tresize(max(cols as c_int, 1), max(rows as c_int, 1));
         treset();
 
+        usedfont = if opt_font.is_some() {
+            opt_font
+        } else {
+            Some(CString::new(defaultfont).unwrap())
+        };
+
         exit_code = st_main(c_args.len() as c_int,
                             c_args.as_ptr(),
                             to_ptr(opt_title.as_ref()),
                             to_ptr(opt_class.as_ref()),
                             to_ptr(opt_io.as_ref()),
-                            to_ptr(opt_font.as_ref()),
                             to_ptr(opt_line.as_ref()),
                             to_ptr(opt_name.as_ref()),
                             to_ptr(opt_embed.as_ref()));
