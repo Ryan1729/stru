@@ -3,6 +3,10 @@
 extern crate libc;
 use libc::*;
 
+extern crate x11;
+use x11::xlib;
+use x11::xft;
+
 use std::ffi::CString;
 use std::mem;
 use std::ptr;
@@ -288,6 +292,85 @@ const defaultbg: c_uint = 0;
  */
 const tabspaces: c_uint = 8;
 
+type Draw = *mut xft::XftDraw;
+
+#[repr(C)]
+#[allow(dead_code)]
+/* Purely graphic info */
+pub struct XWindow {
+    dpy: *mut xlib::Display,
+    cmap: xlib::Colormap,
+    win: xlib::Window,
+    buf: xlib::Drawable,
+    xembed: xlib::Atom,
+    wmdeletewin: xlib::Atom,
+    netwmname: xlib::Atom,
+    netwmpid: xlib::Atom,
+    xim: xlib::XIM,
+    xic: xlib::XIC,
+    draw: Draw,
+    vis: *mut xlib::Visual,
+    attrs: xlib::XSetWindowAttributes,
+    scr: c_int,
+    isfixed: c_int, /* is fixed geometry? */
+    l: c_int, /* left and top offset */
+    t: c_int,
+    gm: c_int, /* geometry mask */
+    tw: c_int,
+    th: c_int, /* tty width and height */
+    w: c_int,
+    h: c_int, /* window width and height */
+    ch: c_int, /* char height */
+    cw: c_int, /* char width  */
+    state: c_char, /* focus, redraw, visible */
+    cursor: c_int, /* cursor style */
+}
+
+#[no_mangle]
+pub static mut xw: XWindow = XWindow {
+    dpy: 0 as *mut xlib::Display,
+    cmap: 0 as xlib::Colormap,
+    win: 0 as xlib::Window,
+    buf: 0 as xlib::Drawable,
+    xembed: 0,
+    wmdeletewin: 0,
+    netwmname: 0,
+    netwmpid: 0,
+    xim: 0 as xlib::XIM,
+    xic: 0 as xlib::XIC,
+    draw: 0 as Draw,
+    vis: 0 as *mut xlib::Visual,
+    attrs: xlib::XSetWindowAttributes {
+        background_pixmap: 0,
+        background_pixel: 0,
+        border_pixmap: 0,
+        border_pixel: 0,
+        bit_gravity: 0,
+        win_gravity: 0,
+        backing_store: 0,
+        backing_planes: 0,
+        backing_pixel: 0,
+        save_under: 0,
+        event_mask: 0,
+        do_not_propagate_mask: 0,
+        override_redirect: 0,
+        colormap: 0,
+        cursor: 0,
+    },
+    scr: 0,
+    isfixed: 0,
+    l: 0,
+    t: 0,
+    gm: 0,
+    tw: 0,
+    th: 0,
+    w: 0,
+    h: 0,
+    ch: 0,
+    cw: 0,
+    state: 0,
+    cursor: 0,
+};
 
 pub type Rune = uint32_t;
 
@@ -312,7 +395,6 @@ pub struct TCursor {
 
 
 #[no_mangle]
-#[allow(non_upper_case_globals)]
 pub static mut term: Term = Term {
     row: 0,
     col: 0,

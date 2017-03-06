@@ -523,7 +523,7 @@ static void (*handler[LASTEvent])(XEvent *) = {
 
 /* Globals */
 static DC dc;
-static XWindow xw;
+extern XWindow xw;
 extern Term term;
 static CSIEscape csiescseq;
 static STREscape strescseq;
