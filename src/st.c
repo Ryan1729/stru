@@ -534,7 +534,6 @@ static int iofd = 1;
 static char **opt_cmd  = NULL;
 static char *opt_class = NULL;
 static char *opt_embed = NULL;
-static char *opt_font  = NULL;
 static char *opt_io    = NULL;
 static char *opt_line  = NULL;
 static char *opt_name  = NULL;
@@ -3444,7 +3443,6 @@ xinit(void)
 	if (!FcInit())
 		die("Could not init fontconfig.\n");
 
-	usedfont = (opt_font == NULL)? font : opt_font;
 	xloadfonts(usedfont, 0);
 
 	/* colors */
@@ -4325,7 +4323,7 @@ st_main(int argc, char *argv[], char *opt_title_param, char *opt_class_param,
   opt_title = opt_title_param ? xstrdup(opt_title_param) : NULL;
   opt_class = opt_class_param ? xstrdup(opt_class_param) : NULL;
   opt_io = opt_io_param ? xstrdup(opt_io_param) : NULL;
-  opt_font = opt_font_param ? xstrdup(opt_font_param) : NULL;
+  usedfont = (opt_font_param == NULL)? font : xstrdup(opt_font_param);
   opt_line = opt_line_param ? xstrdup(opt_line_param) : NULL;
   opt_name = opt_name_param ? xstrdup(opt_name_param) : NULL;
   opt_embed = opt_embed_param ? xstrdup(opt_embed_param) : NULL;
@@ -4338,6 +4336,8 @@ st_main(int argc, char *argv[], char *opt_title_param, char *opt_class_param,
 
 	setlocale(LC_CTYPE, "");
 	XSetLocaleModifiers("");
+
+
 
 	xinit();
 	selinit();
