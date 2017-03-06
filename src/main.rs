@@ -10,6 +10,9 @@ extern crate x11;
 use x11::xlib;
 use x11::xft;
 
+extern crate fontconfig;
+use fontconfig::fontconfig::*;
+
 use std::ffi::CString;
 use std::mem;
 use std::ptr;
@@ -573,6 +576,8 @@ and can be found at st.suckless.org\n",
             Some(CString::new(defaultfont).unwrap())
         };
 
+        xinit();
+
         exit_code = st_main(c_args.len() as c_int,
                             c_args.as_ptr(),
                             to_ptr(opt_title.as_ref()),
@@ -584,6 +589,24 @@ and can be found at st.suckless.org\n",
     };
 
     std::process::exit(exit_code);
+}
+
+unsafe fn xinit() {
+    xw.dpy = xlib::XOpenDisplay(ptr::null());
+
+    if xw.dpy.is_null() {
+        die!("Can't open display\n");
+    }
+
+    xw.scr = xlib::XDefaultScreen(xw.dpy);
+    xw.vis = xlib::XDefaultVisual(xw.dpy, xw.scr);
+
+    /* font */
+    if FcInit() == 0 {
+        die!("Could not init fontconfig.\n");
+    }
+
+    loadfonts(0.0);
 }
 
 fn to_ptr(possible_arg: Option<&CString>) -> *const c_char {

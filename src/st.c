@@ -3428,22 +3428,9 @@ xzoomreset(const Arg *arg)
 void
 xinit(void)
 {
-	XGCValues gcvalues;
-	Cursor cursor;
 	Window parent;
 	pid_t thispid = getpid();
 	XColor xmousefg, xmousebg;
-
-	if (!(xw.dpy = XOpenDisplay(NULL)))
-		die("Can't open display\n");
-	xw.scr = XDefaultScreen(xw.dpy);
-	xw.vis = XDefaultVisual(xw.dpy, xw.scr);
-
-	/* font */
-	if (!FcInit())
-		die("Could not init fontconfig.\n");
-
-	loadfonts(0);
 
 	/* colors */
 	xw.cmap = XDefaultColormap(xw.dpy, xw.scr);
@@ -3472,6 +3459,8 @@ xinit(void)
 			xw.w, xw.h, 0, XDefaultDepth(xw.dpy, xw.scr), InputOutput,
 			xw.vis, CWBackPixel | CWBorderPixel | CWBitGravity
 			| CWEventMask | CWColormap, &xw.attrs);
+
+  XGCValues gcvalues;
 
 	memset(&gcvalues, 0, sizeof(gcvalues));
 	gcvalues.graphics_exposures = False;
@@ -3502,6 +3491,8 @@ xinit(void)
 					   XNFocusWindow, xw.win, NULL);
 	if (xw.xic == NULL)
 		die("XCreateIC failed. Could not obtain input method.\n");
+
+  Cursor cursor;
 
 	/* white cursor, black outline */
 	cursor = XCreateFontCursor(xw.dpy, mouseshape);
@@ -4335,8 +4326,6 @@ st_main(int argc, char *argv[], char *opt_title_param, char *opt_class_param,
 
 	setlocale(LC_CTYPE, "");
 	XSetLocaleModifiers("");
-
-
 
 	xinit();
 	selinit();
