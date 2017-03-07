@@ -434,7 +434,7 @@ static void xhints(void);
 static void xclear(int, int, int, int);
 static void xdrawcursor(void);
 static void xinit(void);
-static void xloadcols(void);
+void xloadcols(void);
 static int xsetcolorname(int, const char *);
 static int xgeommasktogravity(int);
 static int xloadfont(Font *, FcPattern *);
@@ -3432,26 +3432,8 @@ xinit(void)
 	pid_t thispid = getpid();
 	XColor xmousefg, xmousebg;
 
-	/* colors */
-	xw.cmap = XDefaultColormap(xw.dpy, xw.scr);
-	xloadcols();
-
-	/* adjust fixed window geometry */
-	xw.w = 2 * borderpx + term.col * xw.cw;
-	xw.h = 2 * borderpx + term.row * xw.ch;
-	if (xw.gm & XNegative)
-		xw.l += DisplayWidth(xw.dpy, xw.scr) - xw.w - 2;
-	if (xw.gm & YNegative)
-		xw.t += DisplayHeight(xw.dpy, xw.scr) - xw.h - 2;
-
-	/* Events */
 	xw.attrs.background_pixel = dc.col[defaultbg].pixel;
 	xw.attrs.border_pixel = dc.col[defaultbg].pixel;
-	xw.attrs.bit_gravity = NorthWestGravity;
-	xw.attrs.event_mask = FocusChangeMask | KeyPressMask
-		| ExposureMask | VisibilityChangeMask | StructureNotifyMask
-		| ButtonMotionMask | ButtonPressMask | ButtonReleaseMask;
-	xw.attrs.colormap = xw.cmap;
 
 	if (!(opt_embed && (parent = strtol(opt_embed, NULL, 0))))
 		parent = XRootWindow(xw.dpy, xw.scr);

@@ -35,6 +35,7 @@ extern "C" {
                -> c_int;
 
     fn xloadfonts(fontstr: *const c_char, fontsize: c_double);
+    fn xloadcols();
 
     fn tsetdirt(top: c_int, bot: c_int);
     fn tresize(col: c_int, row: c_int);
@@ -306,8 +307,16 @@ const defaultbg: c_uint = 0;
  *	stty tabs
  */
 const tabspaces: c_uint = 8;
+/*
+ * Default shape of cursor
+ * 2: Block ("█")
+ * 4: Underline ("_")
+ * 6: Bar ("|")
+ * 7: Snowman ("☃")
+ */
 const cursorshape: c_int = 2;
 const defaultfont: &'static str = "Liberation Mono:pixelsize=16:antialias=true:autohint=true";
+const borderpx: c_int = 2;
 
 type Draw = *mut xft::XftDraw;
 
@@ -591,6 +600,19 @@ and can be found at st.suckless.org\n",
     std::process::exit(exit_code);
 }
 
+/*
+ * Bitmask returned by XParseGeometry().  Each bit tells if the corresponding
+ * value (x, y, width, height) was found in the parsed string.
+ */
+// const NoValue: c_int = 0x0000;
+// const XValue: c_int = 0x0001;
+// const YValue: c_int = 0x0002;
+// const WidthValue: c_int = 0x0004;
+// const HeightValue: c_int = 0x0008;
+// const AllValues: c_int = 0x000F;
+const XNegative: c_int = 0x0010;
+const YNegative: c_int = 0x0020;
+
 unsafe fn xinit() {
     xw.dpy = xlib::XOpenDisplay(ptr::null());
 
@@ -601,12 +623,35 @@ unsafe fn xinit() {
     xw.scr = xlib::XDefaultScreen(xw.dpy);
     xw.vis = xlib::XDefaultVisual(xw.dpy, xw.scr);
 
-    /* font */
+    xw.cmap = xlib::XDefaultColormap(xw.dpy, xw.scr);
+
+    /* Fc == fontconfig */
     if FcInit() == 0 {
         die!("Could not init fontconfig.\n");
     }
 
     loadfonts(0.0);
+
+    xloadcols();
+
+    /* adjust fixed window geometry */
+    xw.w = 2 * borderpx + term.col * xw.cw;
+    xw.h = 2 * borderpx + term.row * xw.ch;
+
+    if is_set_on!(XNegative, xw.gm) {
+        xw.l += xlib::XDisplayWidth(xw.dpy, xw.scr) - xw.w - 2;
+    }
+    if is_set_on!(YNegative, xw.gm) {
+        xw.t += xlib::XDisplayHeight(xw.dpy, xw.scr) - xw.h - 2;
+    }
+
+    xw.attrs.bit_gravity = xlib::NorthWestGravity;
+    xw.attrs.event_mask =
+        xlib::FocusChangeMask | xlib::KeyPressMask | xlib::ExposureMask |
+        xlib::VisibilityChangeMask | xlib::StructureNotifyMask |
+        xlib::ButtonMotionMask | xlib::ButtonPressMask | xlib::ButtonReleaseMask;
+    xw.attrs.colormap = xw.cmap;
+
 }
 
 fn to_ptr(possible_arg: Option<&CString>) -> *const c_char {
