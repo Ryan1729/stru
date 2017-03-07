@@ -275,8 +275,9 @@ pub unsafe extern "C" fn tmoveto(x: c_int, y: c_int) {
     term.c.y = limit!(y, miny, maxy);
 }
 
-//TODO move these into config.rs once they are completely within Rust's purview
+
 /*
+    TODO move these into config.rs once they are completely within Rust's purview
  * spaces per tab
  *
  * When you are changing this value, don't forget to adapt the »it« value in
@@ -316,6 +317,41 @@ fn usage(exe_path: &str) {
          exe_path,
          exe_path);
 }
+
+type Color = xft::XftColor;
+type Font = xlib::Font;
+
+const colours_size: usize = 258; //MAX(LEN(colorname), 256)
+
+/* Drawing Context */
+#[repr(C)]
+#[allow(dead_code)]
+pub struct DC {
+    col: [Color; colours_size],
+    font: Font,
+    bfont: Font,
+    ifont: Font,
+    ibfont: Font,
+    gc: xlib::GC,
+}
+
+#[no_mangle]
+pub static mut dc: DC = DC {
+    col: [Color {
+        pixel: 0 as c_ulong,
+        color: x11::xrender::XRenderColor {
+            red: 0,
+            green: 0,
+            blue: 0,
+            alpha: 0,
+        },
+    }; colours_size],
+    font: 0 as Font,
+    bfont: 0 as Font,
+    ifont: 0 as Font,
+    ibfont: 0 as Font,
+    gc: 0 as xlib::GC,
+};
 
 type Draw = *mut xft::XftDraw;
 
