@@ -31,8 +31,7 @@ extern "C" {
                opt_class: *const c_char,
                opt_io: *const c_char,
                opt_line: *const c_char,
-               opt_name: *const c_char,
-               opt_embed: *const c_char)
+               opt_name: *const c_char)
                -> c_int;
 
     fn xloadfonts(fontstr: *const c_char, fontsize: c_double);
@@ -44,10 +43,23 @@ extern "C" {
 }
 
 macro_rules! arg_set {
-    ( $target:ident, $args:ident, $cmd_start:ident, $len:ident, $exe_path:expr) => {{
+    ( CString $target:ident, $args:ident, $cmd_start:ident, $len:ident, $exe_path:expr) => {{
         $cmd_start += 1;
         if $cmd_start < $len {
             $target = Some(CString::new($args.remove($cmd_start)).unwrap());
+
+            $cmd_start -= 1;
+            $args.remove($cmd_start); //remove the flag
+            $len = $args.len();
+        } else {
+            usage($exe_path)
+        }
+    }};
+
+    ( $target:ident, $args:ident, $cmd_start:ident, $len:ident, $exe_path:expr) => {{
+        $cmd_start += 1;
+        if $cmd_start < $len {
+            $target = Some($args.remove($cmd_start));
 
             $cmd_start -= 1;
             $args.remove($cmd_start); //remove the flag
@@ -112,6 +124,20 @@ macro_rules! new {
             x: 0,
             y: 0,
             state: CURSOR_DEFAULT as c_char,
+        }
+    };
+
+    (Font) => {
+        Font {
+            height: 0,
+            width: 0,
+            ascent: 0,
+            descent: 0,
+            lbearing: 0,
+            rbearing: 0,
+            match_: 0 as *mut xft::XftFont,
+            set: 0 as *mut FcFontSet,
+            pattern: 0 as *mut FcPattern,
         }
     }
 }
@@ -319,7 +345,20 @@ fn usage(exe_path: &str) {
 }
 
 type Color = xft::XftColor;
-type Font = xlib::Font;
+
+#[repr(C)]
+#[allow(dead_code)]
+struct Font {
+    height: c_int,
+    width: c_int,
+    ascent: c_int,
+    descent: c_int,
+    lbearing: c_short,
+    rbearing: c_short,
+    match_: *mut xft::XftFont,
+    set: *mut FcFontSet,
+    pattern: *mut FcPattern,
+}
 
 const colours_size: usize = 258; //MAX(LEN(colorname), 256)
 
@@ -346,10 +385,10 @@ pub static mut dc: DC = DC {
             alpha: 0,
         },
     }; colours_size],
-    font: 0 as Font,
-    bfont: 0 as Font,
-    ifont: 0 as Font,
-    ibfont: 0 as Font,
+    font: new!(Font),
+    bfont: new!(Font),
+    ifont: new!(Font),
+    ibfont: new!(Font),
     gc: 0 as xlib::GC,
 };
 
@@ -521,7 +560,8 @@ fn main() {
     let mut opt_font: Option<CString> = None;
     let mut opt_line: Option<CString> = None;
     let mut opt_name: Option<CString> = None;
-    let mut opt_embed: Option<CString> = None;
+
+    let mut opt_embed: Option<String> = None;
 
     let mut opt_allow_alt_screen = true;
     let mut opt_is_fixed = false;
@@ -558,13 +598,13 @@ and can be found at st.suckless.org\n",
             .collect();
 
         match flag.as_ref() {
-            "t" | "T" => arg_set!(opt_title, args, cmd_start, len, &exe_path),
-            "c" => arg_set!(opt_class, args, cmd_start, len, &exe_path),
-            "o" => arg_set!(opt_io, args, cmd_start, len, &exe_path),
-            "g" => arg_set!(opt_geo, args, cmd_start, len, &exe_path),
-            "f" => arg_set!(opt_font, args, cmd_start, len, &exe_path),
-            "l" => arg_set!(opt_line, args, cmd_start, len, &exe_path),
-            "n" => arg_set!(opt_name, args, cmd_start, len, &exe_path),
+            "t" | "T" => arg_set!(CString opt_title, args, cmd_start, len, &exe_path),
+            "c" => arg_set!(CString opt_class, args, cmd_start, len, &exe_path),
+            "o" => arg_set!(CString opt_io, args, cmd_start, len, &exe_path),
+            "g" => arg_set!(CString opt_geo, args, cmd_start, len, &exe_path),
+            "f" => arg_set!(CString opt_font, args, cmd_start, len, &exe_path),
+            "l" => arg_set!(CString opt_line, args, cmd_start, len, &exe_path),
+            "n" => arg_set!(CString opt_name, args, cmd_start, len, &exe_path),
             "w" => arg_set!(opt_embed, args, cmd_start, len, &exe_path),
             "e" => {
                 cmd_start += 1;
@@ -620,7 +660,7 @@ and can be found at st.suckless.org\n",
             Some(CString::new(config::defaultfont).unwrap())
         };
 
-        xinit();
+        xinit(opt_embed);
 
         exit_code = st_main(c_args.len() as c_int,
                             c_args.as_ptr(),
@@ -628,8 +668,7 @@ and can be found at st.suckless.org\n",
                             to_ptr(opt_class.as_ref()),
                             to_ptr(opt_io.as_ref()),
                             to_ptr(opt_line.as_ref()),
-                            to_ptr(opt_name.as_ref()),
-                            to_ptr(opt_embed.as_ref()));
+                            to_ptr(opt_name.as_ref()));
     };
 
     std::process::exit(exit_code);
@@ -648,7 +687,7 @@ and can be found at st.suckless.org\n",
 const XNegative: c_int = 0x0010;
 const YNegative: c_int = 0x0020;
 
-unsafe fn xinit() {
+unsafe fn xinit(opt_embed: Option<String>) {
     xw.dpy = xlib::XOpenDisplay(ptr::null());
 
     if xw.dpy.is_null() {
@@ -680,6 +719,8 @@ unsafe fn xinit() {
         xw.t += xlib::XDisplayHeight(xw.dpy, xw.scr) - xw.h - 2;
     }
 
+    xw.attrs.background_pixel = dc.col[config::defaultbg as usize].pixel;
+    xw.attrs.border_pixel = dc.col[config::defaultbg as usize].pixel;
     xw.attrs.bit_gravity = xlib::NorthWestGravity;
     xw.attrs.event_mask =
         xlib::FocusChangeMask | xlib::KeyPressMask | xlib::ExposureMask |
@@ -687,6 +728,39 @@ unsafe fn xinit() {
         xlib::ButtonMotionMask | xlib::ButtonPressMask | xlib::ButtonReleaseMask;
     xw.attrs.colormap = xw.cmap;
 
+    let parent;
+
+    if let Some(embed) = opt_embed {
+        if let Ok(window_id) = embed.parse::<c_ulong>() {
+            parent = window_id;
+        } else {
+            parent = xlib::XRootWindow(xw.dpy, xw.scr);
+        }
+    } else {
+        parent = xlib::XRootWindow(xw.dpy, xw.scr);
+    }
+
+    xw.win = xlib::XCreateWindow(xw.dpy,
+                                 parent,
+                                 xw.l,
+                                 xw.t,
+                                 xw.w as c_uint,
+                                 xw.h as c_uint,
+                                 0,
+                                 xlib::XDefaultDepth(xw.dpy, xw.scr),
+                                 xlib::InputOutput as c_uint,
+                                 xw.vis,
+                                 xlib::CWBackPixel | xlib::CWBorderPixel | xlib::CWBitGravity |
+                                 xlib::CWEventMask |
+                                 xlib::CWColormap,
+                                 &mut xw.attrs as *mut xlib::XSetWindowAttributes);
+
+    let mut gcvalues: xlib::XGCValues = mem::zeroed();
+
+    dc.gc = xlib::XCreateGC(xw.dpy,
+                            parent,
+                            xlib::GCGraphicsExposures as c_ulong,
+                            &mut gcvalues as *mut xlib::XGCValues);
 }
 
 fn to_ptr(possible_arg: Option<&CString>) -> *const c_char {

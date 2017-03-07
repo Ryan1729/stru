@@ -3428,28 +3428,12 @@ xzoomreset(const Arg *arg)
 void
 xinit(void)
 {
-	Window parent;
 	pid_t thispid = getpid();
 	XColor xmousefg, xmousebg;
 
-	xw.attrs.background_pixel = dc.col[defaultbg].pixel;
-	xw.attrs.border_pixel = dc.col[defaultbg].pixel;
-
-	if (!(opt_embed && (parent = strtol(opt_embed, NULL, 0))))
-		parent = XRootWindow(xw.dpy, xw.scr);
-	xw.win = XCreateWindow(xw.dpy, parent, xw.l, xw.t,
-			xw.w, xw.h, 0, XDefaultDepth(xw.dpy, xw.scr), InputOutput,
-			xw.vis, CWBackPixel | CWBorderPixel | CWBitGravity
-			| CWEventMask | CWColormap, &xw.attrs);
-
-  XGCValues gcvalues;
-
-	memset(&gcvalues, 0, sizeof(gcvalues));
-	gcvalues.graphics_exposures = False;
-	dc.gc = XCreateGC(xw.dpy, parent, GCGraphicsExposures,
-			&gcvalues);
 	xw.buf = XCreatePixmap(xw.dpy, xw.win, xw.w, xw.h,
 			DefaultDepth(xw.dpy, xw.scr));
+      
 	XSetForeground(xw.dpy, dc.gc, dc.col[defaultbg].pixel);
 	XFillRectangle(xw.dpy, xw.buf, dc.gc, 0, 0, xw.w, xw.h);
 
@@ -4289,7 +4273,7 @@ run(void)
 int
 st_main(int argc, char *argv[], char *opt_title_param, char *opt_class_param,
   char *opt_io_param, char *opt_line_param,
-  char *opt_name_param, char *opt_embed_param)
+  char *opt_name_param)
 {
   printf("in c\n");
 
@@ -4298,7 +4282,7 @@ st_main(int argc, char *argv[], char *opt_title_param, char *opt_class_param,
   opt_io = opt_io_param ? xstrdup(opt_io_param) : NULL;
   opt_line = opt_line_param ? xstrdup(opt_line_param) : NULL;
   opt_name = opt_name_param ? xstrdup(opt_name_param) : NULL;
-  opt_embed = opt_embed_param ? xstrdup(opt_embed_param) : NULL;
+
 
 
 	if (argc > 0) {
