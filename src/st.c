@@ -4291,7 +4291,8 @@ st_main(int argc, char *argv[], char *opt_title_param, char *opt_class_param,
   char *opt_io_param, char *opt_line_param,
   char *opt_name_param, char *opt_embed_param)
 {
-  printf("in c");
+  printf("in c\n");
+
 
   opt_title = opt_title_param ? xstrdup(opt_title_param) : NULL;
   opt_class = opt_class_param ? xstrdup(opt_class_param) : NULL;

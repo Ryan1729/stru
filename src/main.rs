@@ -18,6 +18,7 @@ use std::mem;
 use std::ptr;
 use std::cmp::max;
 
+mod config;
 
 // "the `link_args` attribute is not portable across platforms" but that's fine,
 // I just need it for the purposes of the port and only until I can move everything
@@ -105,8 +106,8 @@ macro_rules! new {
             attr: Glyph {
                 u: 0,
                 mode: ATTR_NULL as u16,
-                fg: defaultfg,
-                bg: defaultbg,
+                fg: config::defaultfg,
+                bg: config::defaultbg,
             },
             x: 0,
             y: 0,
@@ -237,10 +238,10 @@ pub unsafe extern "C" fn treset() {
                  term.col as size_t * mem::size_of::<*mut c_int>() as size_t);
 
     //TODO reduce casting here
-    let mut i: c_uint = tabspaces;
+    let mut i: c_uint = config::tabspaces;
     while i < term.col as c_uint {
         ptr::write(term.tabs.offset(i as isize), 1);
-        i += tabspaces;
+        i += config::tabspaces;
     }
 
     term.top = 0;
@@ -274,23 +275,7 @@ pub unsafe extern "C" fn tmoveto(x: c_int, y: c_int) {
     term.c.y = limit!(y, miny, maxy);
 }
 
-fn basename(path: &str) -> &str {
-    path.rsplitn(2, "/").next().unwrap_or(path)
-}
-
-fn usage(exe_path: &str) {
-    die!("usage:  {} [-aiv] [-c class] [-f font] [-g geometry] [-n name] [-o file]\n
-        [-T title] [-t title] [-w windowid] [[-e] command [args ...]]\n
-        {} [-aiv] [-c class] [-f font] [-g geometry] [-n name] [-o file]\n
-        [-T title] [-t title] [-w windowid] -l line [stty_args ...]\n",
-         exe_path,
-         exe_path);
-}
-
-//NOTE must be synced with config.h for as long as  that exists
-const histsize: usize = 16; //2000;
-const defaultfg: c_uint = 7;
-const defaultbg: c_uint = 0;
+//TODO move these into config.rs once they are completely within Rust's purview
 /*
  * spaces per tab
  *
@@ -306,17 +291,31 @@ const defaultbg: c_uint = 0;
  *
  *	stty tabs
  */
-const tabspaces: c_uint = 8;
-/*
- * Default shape of cursor
- * 2: Block ("█")
- * 4: Underline ("_")
- * 6: Bar ("|")
- * 7: Snowman ("☃")
- */
-const cursorshape: c_int = 2;
-const defaultfont: &'static str = "Liberation Mono:pixelsize=16:antialias=true:autohint=true";
-const borderpx: c_int = 2;
+
+
+#[no_mangle]
+pub static tabspaces: c_uint = 8;
+
+
+
+#[no_mangle]
+pub static defaultcs: c_uint = 256;
+#[no_mangle]
+pub static defaultrcs: c_uint = 257;
+
+
+fn basename(path: &str) -> &str {
+    path.rsplitn(2, "/").next().unwrap_or(path)
+}
+
+fn usage(exe_path: &str) {
+    die!("usage:  {} [-aiv] [-c class] [-f font] [-g geometry] [-n name] [-o file]\n
+        [-T title] [-t title] [-w windowid] [[-e] command [args ...]]\n
+        {} [-aiv] [-c class] [-f font] [-g geometry] [-n name] [-o file]\n
+        [-T title] [-t title] [-w windowid] -l line [stty_args ...]\n",
+         exe_path,
+         exe_path);
+}
 
 type Draw = *mut xft::XftDraw;
 
@@ -395,7 +394,7 @@ pub static mut xw: XWindow = XWindow {
     ch: 0,
     cw: 0,
     state: 0,
-    cursor: cursorshape,
+    cursor: config::cursorshape,
 };
 
 pub type Rune = uint32_t;
@@ -450,7 +449,7 @@ pub struct Term {
     col: c_int,
     line: usize,
     alt: usize,
-    hist: [usize; histsize],
+    hist: [usize; config::histsize],
     histi: c_int,
     scr: c_int,
     dirty: usize,
@@ -582,7 +581,7 @@ and can be found at st.suckless.org\n",
         usedfont = if opt_font.is_some() {
             opt_font
         } else {
-            Some(CString::new(defaultfont).unwrap())
+            Some(CString::new(config::defaultfont).unwrap())
         };
 
         xinit();
@@ -635,8 +634,8 @@ unsafe fn xinit() {
     xloadcols();
 
     /* adjust fixed window geometry */
-    xw.w = 2 * borderpx + term.col * xw.cw;
-    xw.h = 2 * borderpx + term.row * xw.ch;
+    xw.w = 2 * config::borderpx + term.col * xw.cw;
+    xw.h = 2 * config::borderpx + term.row * xw.ch;
 
     if is_set_on!(XNegative, xw.gm) {
         xw.l += xlib::XDisplayWidth(xw.dpy, xw.scr) - xw.w - 2;
