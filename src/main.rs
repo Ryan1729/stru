@@ -811,6 +811,31 @@ unsafe fn xinit(opt_embed: Option<String>) {
         die!("XCreateIC failed. Could not obtain input method.\n");
     }
 
+    xw.xembed = xlib::XInternAtom(xw.dpy, CString::new("_XEMBED").unwrap().as_ptr(), 0);
+    xw.wmdeletewin = xlib::XInternAtom(xw.dpy,
+                                       CString::new("WM_DELETE_WINDOW").unwrap().as_ptr(),
+                                       0);
+    xw.netwmname = xlib::XInternAtom(xw.dpy, CString::new("_NET_WM_NAME").unwrap().as_ptr(), 0);
+    xlib::XSetWMProtocols(xw.dpy, xw.win, &mut xw.wmdeletewin as *mut c_ulong, 1);
+
+    let thispid = libc::getpid() as u32;
+    // I guess this assumes this is running on a little endian machine?
+    // As far as I can tell, Rust doesn't (currently) have an easy way to
+    // do this conversion without knowing the endianess. Hopefully anyone
+    // who cares will be able to find this by searching for "getpid"
+    let pid_array = [(thispid & 0x000000FF) as u8,
+                     ((thispid & 0x0000FF00) >> 8) as u8,
+                     ((thispid & 0x00FF0000) >> 16) as u8,
+                     ((thispid & 0xFF000000) >> 24) as u8];
+    xw.netwmpid = xlib::XInternAtom(xw.dpy, CString::new("_NET_WM_PID").unwrap().as_ptr(), 0);
+    xlib::XChangeProperty(xw.dpy,
+                          xw.win,
+                          xw.netwmpid,
+                          xlib::XA_CARDINAL,
+                          32,
+                          xlib::PropModeReplace,
+                          &pid_array as *const c_uchar,
+                          1);
 
 }
 

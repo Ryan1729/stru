@@ -3428,7 +3428,7 @@ xzoomreset(const Arg *arg)
 void
 xinit(void)
 {
-	pid_t thispid = getpid();
+
 	XColor xmousefg, xmousebg;
   Cursor cursor;
 
@@ -3449,15 +3449,6 @@ xinit(void)
 	}
 
 	XRecolorCursor(xw.dpy, cursor, &xmousefg, &xmousebg);
-
-	xw.xembed = XInternAtom(xw.dpy, "_XEMBED", False);
-	xw.wmdeletewin = XInternAtom(xw.dpy, "WM_DELETE_WINDOW", False);
-	xw.netwmname = XInternAtom(xw.dpy, "_NET_WM_NAME", False);
-	XSetWMProtocols(xw.dpy, xw.win, &xw.wmdeletewin, 1);
-
-	xw.netwmpid = XInternAtom(xw.dpy, "_NET_WM_PID", False);
-	XChangeProperty(xw.dpy, xw.win, xw.netwmpid, XA_CARDINAL, 32,
-			PropModeReplace, (uchar *)&thispid, 1);
 
 	xresettitle();
 	XMapWindow(xw.dpy, xw.win);
