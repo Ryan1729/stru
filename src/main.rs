@@ -797,6 +797,21 @@ unsafe fn xinit(opt_embed: Option<String>) {
         }
     }
 
+    xw.xic = xlib::XCreateIC(xw.xim,
+                             CString::new(xlib::XNInputStyle).unwrap().as_ptr(),
+                             xlib::XIMPreeditNothing | xlib::XIMStatusNothing,
+                             CString::new(xlib::XNClientWindow).unwrap().as_ptr(),
+                             xw.win,
+                             CString::new(xlib::XNFocusWindow).unwrap().as_ptr(),
+                             xw.win,
+                             0 as *mut libc::c_void);
+
+
+    if xw.xic.is_null() {
+        die!("XCreateIC failed. Could not obtain input method.\n");
+    }
+
+
 }
 
 fn to_ptr(possible_arg: Option<&CString>) -> *const c_char {
