@@ -3430,35 +3430,13 @@ xinit(void)
 {
 	pid_t thispid = getpid();
 	XColor xmousefg, xmousebg;
+  Cursor cursor;
 
-	xw.buf = XCreatePixmap(xw.dpy, xw.win, xw.w, xw.h,
-			DefaultDepth(xw.dpy, xw.scr));
-      
-	XSetForeground(xw.dpy, dc.gc, dc.col[defaultbg].pixel);
-	XFillRectangle(xw.dpy, xw.buf, dc.gc, 0, 0, xw.w, xw.h);
-
-	/* Xft rendering context */
-	xw.draw = XftDrawCreate(xw.dpy, xw.buf, xw.vis, xw.cmap);
-
-	/* input methods */
-	if ((xw.xim = XOpenIM(xw.dpy, NULL, NULL, NULL)) == NULL) {
-		XSetLocaleModifiers("@im=local");
-		if ((xw.xim =  XOpenIM(xw.dpy, NULL, NULL, NULL)) == NULL) {
-			XSetLocaleModifiers("@im=");
-			if ((xw.xim = XOpenIM(xw.dpy,
-					NULL, NULL, NULL)) == NULL) {
-				die("XOpenIM failed. Could not open input"
-					" device.\n");
-			}
-		}
-	}
-	xw.xic = XCreateIC(xw.xim, XNInputStyle, XIMPreeditNothing
+  xw.xic = XCreateIC(xw.xim, XNInputStyle, XIMPreeditNothing
 					   | XIMStatusNothing, XNClientWindow, xw.win,
 					   XNFocusWindow, xw.win, NULL);
 	if (xw.xic == NULL)
 		die("XCreateIC failed. Could not obtain input method.\n");
-
-  Cursor cursor;
 
 	/* white cursor, black outline */
 	cursor = XCreateFontCursor(xw.dpy, mouseshape);

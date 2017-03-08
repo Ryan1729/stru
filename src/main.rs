@@ -418,8 +418,8 @@ pub struct XWindow {
     gm: c_int, /* geometry mask */
     tw: c_int,
     th: c_int, /* tty width and height */
-    w: c_int,
-    h: c_int, /* window width and height */
+    w: c_uint,
+    h: c_uint, /* window width and height */
     ch: c_int, /* char height */
     cw: c_int, /* char width  */
     state: c_char, /* focus, redraw, visible */
@@ -709,14 +709,14 @@ unsafe fn xinit(opt_embed: Option<String>) {
     xloadcols();
 
     /* adjust fixed window geometry */
-    xw.w = 2 * config::borderpx + term.col * xw.cw;
-    xw.h = 2 * config::borderpx + term.row * xw.ch;
+    xw.w = (2 * config::borderpx + term.col * xw.cw) as c_uint;
+    xw.h = (2 * config::borderpx + term.row * xw.ch) as c_uint;
 
     if is_set_on!(XNegative, xw.gm) {
-        xw.l += xlib::XDisplayWidth(xw.dpy, xw.scr) - xw.w - 2;
+        xw.l += xlib::XDisplayWidth(xw.dpy, xw.scr) - (xw.w as c_int) - 2;
     }
     if is_set_on!(YNegative, xw.gm) {
-        xw.t += xlib::XDisplayHeight(xw.dpy, xw.scr) - xw.h - 2;
+        xw.t += xlib::XDisplayHeight(xw.dpy, xw.scr) - (xw.h as c_int) - 2;
     }
 
     xw.attrs.background_pixel = dc.col[config::defaultbg as usize].pixel;
@@ -744,8 +744,8 @@ unsafe fn xinit(opt_embed: Option<String>) {
                                  parent,
                                  xw.l,
                                  xw.t,
-                                 xw.w as c_uint,
-                                 xw.h as c_uint,
+                                 xw.w,
+                                 xw.h,
                                  0,
                                  xlib::XDefaultDepth(xw.dpy, xw.scr),
                                  xlib::InputOutput as c_uint,
@@ -761,6 +761,42 @@ unsafe fn xinit(opt_embed: Option<String>) {
                             parent,
                             xlib::GCGraphicsExposures as c_ulong,
                             &mut gcvalues as *mut xlib::XGCValues);
+
+    xw.buf = xlib::XCreatePixmap(xw.dpy,
+                                 xw.win,
+                                 xw.w,
+                                 xw.h,
+                                 xlib::XDefaultDepth(xw.dpy, xw.scr as c_int) as c_uint);
+
+    xlib::XSetForeground(xw.dpy, dc.gc, dc.col[config::defaultbg as usize].pixel);
+    xlib::XFillRectangle(xw.dpy, xw.buf, dc.gc, 0, 0, xw.w, xw.h);
+
+    /* Xft rendering context */
+    xw.draw = xft::XftDrawCreate(xw.dpy, xw.buf, xw.vis, xw.cmap);
+
+    /* input methods */
+    xw.xim = xlib::XOpenIM(xw.dpy,
+                           0 as xlib::XrmDatabase,
+                           0 as *mut c_char,
+                           0 as *mut c_char);
+    if xw.xim.is_null() {
+        xlib::XSetLocaleModifiers(CString::new("@im=local").unwrap().as_ptr());
+        xw.xim = xlib::XOpenIM(xw.dpy,
+                               0 as xlib::XrmDatabase,
+                               0 as *mut c_char,
+                               0 as *mut c_char);
+        if xw.xim.is_null() {
+            xlib::XSetLocaleModifiers(CString::new("@im=").unwrap().as_ptr());
+            xw.xim = xlib::XOpenIM(xw.dpy,
+                                   0 as xlib::XrmDatabase,
+                                   0 as *mut c_char,
+                                   0 as *mut c_char);
+            if xw.xim.is_null() {
+                die!("XOpenIM failed. Could not open input device.\n");
+            }
+        }
+    }
+
 }
 
 fn to_ptr(possible_arg: Option<&CString>) -> *const c_char {
