@@ -373,7 +373,7 @@ static void drawregion(int, int, int, int);
 static void execsh(void);
 static void stty(void);
 static void sigchld(int);
-static void run(void);
+int run(void);
 
 static void csidump(void);
 static void csihandle(void);
@@ -4108,7 +4108,7 @@ resize(XEvent *e)
 	ttyresize();
 }
 
-void
+int
 run(void)
 {
 	XEvent ev;
@@ -4215,6 +4215,8 @@ run(void)
 			}
 		}
 	}
+
+  return 0;
 }
 
 int
@@ -4241,7 +4243,6 @@ st_main(int argc, char *argv[], char *opt_title_param, char *opt_class_param,
 	XSetLocaleModifiers("");
 
 	xinit();
-	run();
 
 	return 0;
 }
