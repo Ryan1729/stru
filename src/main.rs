@@ -139,6 +139,20 @@ macro_rules! new {
             set: 0 as *mut FcFontSet,
             pattern: 0 as *mut FcPattern,
         }
+    };
+
+    (Coords) => {
+        Coords {
+            x : 0,
+            y : 0
+        }
+    };
+
+    (libc::timespec) => {
+        libc::timespec {
+            tv_sec : 0,
+            tv_nsec : 0
+        }
     }
 }
 
@@ -150,6 +164,15 @@ enum cursor_state {
     CURSOR_ORIGIN = 2,
 }
 use cursor_state::*;
+
+#[allow(dead_code)]
+#[allow(non_camel_case_types)]
+enum selection_mode {
+    SEL_IDLE = 0,
+    SEL_EMPTY = 1,
+    SEL_READY = 2,
+}
+use selection_mode::*;
 
 #[allow(dead_code)]
 #[allow(non_camel_case_types)]
@@ -344,6 +367,56 @@ fn usage(exe_path: &str) {
          exe_path);
 }
 
+#[repr(C)]
+#[allow(dead_code)]
+pub struct Coords {
+    x: c_int,
+    y: c_int,
+}
+
+#[repr(C)]
+#[allow(dead_code)]
+pub struct Selection {
+    mode: c_int,
+    type_: c_int,
+    snap: c_int,
+    /*
+     * Selection variables:
+     * nb – normalized coordinates of the beginning of the selection
+     * ne – normalized coordinates of the end of the selection
+     * ob – original coordinates of the beginning of the selection
+     * oe – original coordinates of the end of the selection
+     */
+    nb: Coords,
+    ne: Coords,
+    ob: Coords,
+    oe: Coords,
+
+    primary: *mut c_char,
+    clipboard: *mut c_char,
+    xtarget: xlib::Atom,
+    alt: c_int,
+    tclick1: libc::timespec,
+    tclick2: libc::timespec,
+}
+
+#[no_mangle]
+pub static mut sel: Selection = Selection {
+    mode: 0,
+    type_: 0,
+    snap: 0,
+    nb: new!(Coords),
+    ne: new!(Coords),
+    ob: new!(Coords),
+    oe: new!(Coords),
+    primary: 0 as *mut c_char,
+    clipboard: 0 as *mut c_char,
+    xtarget: 0,
+    alt: 0,
+    tclick1: new!(libc::timespec),
+    tclick2: new!(libc::timespec),
+};
+
 type Color = xft::XftColor;
 
 #[repr(C)]
@@ -492,8 +565,6 @@ pub struct TCursor {
     state: c_char,
 }
 
-
-
 #[no_mangle]
 pub static mut term: Term = Term {
     row: 0,
@@ -543,136 +614,6 @@ pub struct Term {
 
 #[no_mangle]
 pub static mut allowaltscreen: c_int = 1;
-
-fn main() {
-    let mut args: Vec<String> = std::env::args().collect::<Vec<String>>();
-
-    let exe_path = if args.len() > 0 {
-        args.remove(0)
-    } else {
-        "stru".to_string()
-    };
-
-    let mut opt_title: Option<CString> = None;
-    let mut opt_class: Option<CString> = None;
-    let mut opt_io: Option<CString> = None;
-    let mut opt_geo: Option<CString> = None;
-    let mut opt_font: Option<CString> = None;
-    let mut opt_line: Option<CString> = None;
-    let mut opt_name: Option<CString> = None;
-
-    let mut opt_embed: Option<String> = None;
-
-    let mut opt_allow_alt_screen = true;
-    let mut opt_is_fixed = false;
-
-    let mut cmd_start = 0;
-    let mut len = args.len();
-    while cmd_start < len && args[cmd_start].starts_with("-") {
-        let mut flag = args[cmd_start].split_at(1).1.to_owned();
-
-        flag = flag.chars()
-            .filter(|c| match *c {
-                'v' => {
-                    die!("{}
-A port of st to Rust.
-
-Original port was done from the version of st found at
-https://github.com/Ryan1729/st-plus-some-patches
-
-C version of st (c) 2010-2016 st engineers
-and can be found at st.suckless.org\n",
-                         exe_path)
-                }
-                'a' => {
-                    opt_allow_alt_screen = false;
-                    false
-                }
-                'i' => {
-                    opt_is_fixed = true;
-                    false
-                }
-
-                _ => true,
-            })
-            .collect();
-
-        match flag.as_ref() {
-            "t" | "T" => arg_set!(CString opt_title, args, cmd_start, len, &exe_path),
-            "c" => arg_set!(CString opt_class, args, cmd_start, len, &exe_path),
-            "o" => arg_set!(CString opt_io, args, cmd_start, len, &exe_path),
-            "g" => arg_set!(CString opt_geo, args, cmd_start, len, &exe_path),
-            "f" => arg_set!(CString opt_font, args, cmd_start, len, &exe_path),
-            "l" => arg_set!(CString opt_line, args, cmd_start, len, &exe_path),
-            "n" => arg_set!(CString opt_name, args, cmd_start, len, &exe_path),
-            "w" => arg_set!(opt_embed, args, cmd_start, len, &exe_path),
-            "e" => {
-                cmd_start += 1;
-                break;
-            }
-            "" => {
-                args.remove(cmd_start);
-
-                len = args.len();
-            }
-            _ => usage(&exe_path),
-        }
-
-    }
-    let opt_cmd = args.split_at(cmd_start).1.to_owned();
-
-    //http://stackoverflow.com/a/34379937/4496839
-    // create a vector of zero terminated strings
-    let zt_args = opt_cmd.iter()
-        .cloned()
-        .map(|arg| CString::new((*arg).to_string()).unwrap())
-        .collect::<Vec<CString>>();
-
-    // convert the strings to raw pointers
-    let c_args = zt_args.iter().map(|arg| arg.as_ptr()).collect::<Vec<*const c_char>>();
-    let exit_code;
-
-    if c_args.len() > 0 {
-        if opt_title.is_none() && opt_line.is_none() {
-            opt_title = opt_cmd.get(0)
-                .map(|arg| CString::new((basename((*arg).as_ref())).to_string()).unwrap());
-        }
-    }
-
-    unsafe {
-        allowaltscreen = if opt_allow_alt_screen { 1 } else { 0 } as c_int;
-
-        xw.isfixed = if opt_is_fixed { 1 } else { 0 } as c_int;
-
-        let mut cols = 80;
-        let mut rows = 24;
-
-        if let Some(geo) = opt_geo {
-            xw.gm = xlib::XParseGeometry(geo.as_ptr(), &mut xw.l, &mut xw.t, &mut cols, &mut rows);
-        }
-
-        tresize(max(cols as c_int, 1), max(rows as c_int, 1));
-        treset();
-
-        usedfont = if opt_font.is_some() {
-            opt_font
-        } else {
-            Some(CString::new(config::defaultfont).unwrap())
-        };
-
-        xinit(opt_embed);
-
-        exit_code = st_main(c_args.len() as c_int,
-                            c_args.as_ptr(),
-                            to_ptr(opt_title.as_ref()),
-                            to_ptr(opt_class.as_ref()),
-                            to_ptr(opt_io.as_ref()),
-                            to_ptr(opt_line.as_ref()),
-                            to_ptr(opt_name.as_ref()));
-    };
-
-    std::process::exit(exit_code);
-}
 
 /*
  * Bitmask returned by XParseGeometry().  Each bit tells if the corresponding
@@ -838,6 +779,154 @@ unsafe fn xinit(opt_embed: Option<String>) {
                           1);
 
 }
+
+fn main() {
+    let mut args: Vec<String> = std::env::args().collect::<Vec<String>>();
+
+    let exe_path = if args.len() > 0 {
+        args.remove(0)
+    } else {
+        "stru".to_string()
+    };
+
+    let mut opt_title: Option<CString> = None;
+    let mut opt_class: Option<CString> = None;
+    let mut opt_io: Option<CString> = None;
+    let mut opt_geo: Option<CString> = None;
+    let mut opt_font: Option<CString> = None;
+    let mut opt_line: Option<CString> = None;
+    let mut opt_name: Option<CString> = None;
+
+    let mut opt_embed: Option<String> = None;
+
+    let mut opt_allow_alt_screen = true;
+    let mut opt_is_fixed = false;
+
+    let mut cmd_start = 0;
+    let mut len = args.len();
+    while cmd_start < len && args[cmd_start].starts_with("-") {
+        let mut flag = args[cmd_start].split_at(1).1.to_owned();
+
+        flag = flag.chars()
+            .filter(|c| match *c {
+                'v' => {
+                    die!("{}
+A port of st to Rust.
+
+Original port was done from the version of st found at
+https://github.com/Ryan1729/st-plus-some-patches
+
+C version of st (c) 2010-2016 st engineers
+and can be found at st.suckless.org\n",
+                         exe_path)
+                }
+                'a' => {
+                    opt_allow_alt_screen = false;
+                    false
+                }
+                'i' => {
+                    opt_is_fixed = true;
+                    false
+                }
+
+                _ => true,
+            })
+            .collect();
+
+        match flag.as_ref() {
+            "t" | "T" => arg_set!(CString opt_title, args, cmd_start, len, &exe_path),
+            "c" => arg_set!(CString opt_class, args, cmd_start, len, &exe_path),
+            "o" => arg_set!(CString opt_io, args, cmd_start, len, &exe_path),
+            "g" => arg_set!(CString opt_geo, args, cmd_start, len, &exe_path),
+            "f" => arg_set!(CString opt_font, args, cmd_start, len, &exe_path),
+            "l" => arg_set!(CString opt_line, args, cmd_start, len, &exe_path),
+            "n" => arg_set!(CString opt_name, args, cmd_start, len, &exe_path),
+            "w" => arg_set!(opt_embed, args, cmd_start, len, &exe_path),
+            "e" => {
+                cmd_start += 1;
+                break;
+            }
+            "" => {
+                args.remove(cmd_start);
+
+                len = args.len();
+            }
+            _ => usage(&exe_path),
+        }
+
+    }
+    let opt_cmd = args.split_at(cmd_start).1.to_owned();
+
+    //http://stackoverflow.com/a/34379937/4496839
+    // create a vector of zero terminated strings
+    let zt_args = opt_cmd.iter()
+        .cloned()
+        .map(|arg| CString::new((*arg).to_string()).unwrap())
+        .collect::<Vec<CString>>();
+
+    // convert the strings to raw pointers
+    let c_args = zt_args.iter().map(|arg| arg.as_ptr()).collect::<Vec<*const c_char>>();
+    let exit_code;
+
+    if c_args.len() > 0 {
+        if opt_title.is_none() && opt_line.is_none() {
+            opt_title = opt_cmd.get(0)
+                .map(|arg| CString::new((basename((*arg).as_ref())).to_string()).unwrap());
+        }
+    }
+
+    unsafe {
+        allowaltscreen = if opt_allow_alt_screen { 1 } else { 0 } as c_int;
+
+        xw.isfixed = if opt_is_fixed { 1 } else { 0 } as c_int;
+
+        let mut cols = 80;
+        let mut rows = 24;
+
+        if let Some(geo) = opt_geo {
+            xw.gm = xlib::XParseGeometry(geo.as_ptr(), &mut xw.l, &mut xw.t, &mut cols, &mut rows);
+        }
+
+        tresize(max(cols as c_int, 1), max(rows as c_int, 1));
+        treset();
+
+        usedfont = if opt_font.is_some() {
+            opt_font
+        } else {
+            Some(CString::new(config::defaultfont).unwrap())
+        };
+
+        xinit(opt_embed);
+
+        selinit();
+
+        exit_code = st_main(c_args.len() as c_int,
+                            c_args.as_ptr(),
+                            to_ptr(opt_title.as_ref()),
+                            to_ptr(opt_class.as_ref()),
+                            to_ptr(opt_io.as_ref()),
+                            to_ptr(opt_line.as_ref()),
+                            to_ptr(opt_name.as_ref()));
+    };
+
+    std::process::exit(exit_code);
+}
+
+
+
+unsafe fn selinit() {
+    libc::clock_gettime(CLOCK_MONOTONIC, &mut sel.tclick1 as *mut libc::timespec);
+    libc::clock_gettime(CLOCK_MONOTONIC, &mut sel.tclick2 as *mut libc::timespec);
+    sel.mode = SEL_IDLE as c_int;
+    sel.snap = 0;
+    sel.ob.x = -1;
+    sel.xtarget = xlib::XInternAtom(xw.dpy, CString::new("UTF8_STRING").unwrap().as_ptr(), 0);
+
+    if sel.xtarget == 0 {
+        sel.xtarget = xlib::XA_STRING;
+    }
+}
+
 
 fn to_ptr(possible_arg: Option<&CString>) -> *const c_char {
     match possible_arg {

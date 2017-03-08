@@ -466,7 +466,6 @@ static void selnotify(XEvent *);
 static void selclear(XEvent *);
 static void selrequest(XEvent *);
 
-static void selinit(void);
 static void selnormalize(void);
 static inline int selected(int, int);
 static char *getsel(void);
@@ -530,7 +529,7 @@ static CSIEscape csiescseq;
 static STREscape strescseq;
 static int cmdfd;
 static pid_t pid;
-static Selection sel;
+extern Selection sel;
 static int iofd = 1;
 static char **opt_cmd  = NULL;
 static char *opt_class = NULL;
@@ -698,21 +697,6 @@ utf8validate(Rune *u, size_t i)
 		;
 
 	return i;
-}
-
-void
-selinit(void)
-{
-	clock_gettime(CLOCK_MONOTONIC, &sel.tclick1);
-	clock_gettime(CLOCK_MONOTONIC, &sel.tclick2);
-	sel.mode = SEL_IDLE;
-	sel.snap = 0;
-	sel.ob.x = -1;
-	sel.primary = NULL;
-	sel.clipboard = NULL;
-	sel.xtarget = XInternAtom(xw.dpy, "UTF8_STRING", 0);
-	if (sel.xtarget == None)
-		sel.xtarget = XA_STRING;
 }
 
 int
@@ -4257,7 +4241,6 @@ st_main(int argc, char *argv[], char *opt_title_param, char *opt_class_param,
 	XSetLocaleModifiers("");
 
 	xinit();
-	selinit();
 	run();
 
 	return 0;
