@@ -34,7 +34,7 @@ extern "C" {
                opt_name: *const c_char)
                -> c_int;
 
-    fn run(ev: xlib::XEvent) -> c_int;
+    fn run(ev: xlib::XEvent);
 
     fn xloadfonts(fontstr: *const c_char, fontsize: c_double);
     fn xloadcols();
@@ -873,7 +873,6 @@ and can be found at st.suckless.org\n",
 
     // convert the strings to raw pointers
     let c_args = zt_args.iter().map(|arg| arg.as_ptr()).collect::<Vec<*const c_char>>();
-    let exit_code;
 
     if c_args.len() > 0 {
         if opt_title.is_none() && opt_line.is_none() {
@@ -950,11 +949,11 @@ and can be found at st.suckless.org\n",
         ttynew();
         ttyresize();
 
-        exit_code = run(ev);
+        run(ev);
 
     };
 
-    std::process::exit(exit_code);
+    std::process::exit(0);
 }
 
 

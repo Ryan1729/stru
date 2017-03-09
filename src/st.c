@@ -373,7 +373,7 @@ static void drawregion(int, int, int, int);
 static void execsh(void);
 static void stty(void);
 static void sigchld(int);
-int run(XEvent);
+void run(XEvent);
 
 static void csidump(void);
 static void csihandle(void);
@@ -4108,7 +4108,7 @@ resize(XEvent *e)
 	ttyresize();
 }
 
-int
+void
 run(XEvent ev)
 {
   int xfd = XConnectionNumber(xw.dpy), xev, blinkset = 0, dodraw = 0;
@@ -4193,8 +4193,6 @@ run(XEvent ev)
 			}
 		}
 	}
-
-  return 0;
 }
 
 void
