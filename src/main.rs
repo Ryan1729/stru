@@ -34,7 +34,7 @@ extern "C" {
                opt_name: *const c_char)
                -> c_int;
 
-    fn run() -> c_int;
+    fn run(ev: xlib::XEvent) -> c_int;
 
     fn xloadfonts(fontstr: *const c_char, fontsize: c_double);
     fn xloadcols();
@@ -868,7 +868,7 @@ and can be found at st.suckless.org\n",
 
     // convert the strings to raw pointers
     let c_args = zt_args.iter().map(|arg| arg.as_ptr()).collect::<Vec<*const c_char>>();
-    let mut exit_code;
+    let exit_code;
 
     if c_args.len() > 0 {
         if opt_title.is_none() && opt_line.is_none() {
@@ -902,17 +902,19 @@ and can be found at st.suckless.org\n",
 
         selinit();
 
-        exit_code = st_main(c_args.len() as c_int,
-                            c_args.as_ptr(),
-                            to_ptr(opt_title.as_ref()),
-                            to_ptr(opt_class.as_ref()),
-                            to_ptr(opt_io.as_ref()),
-                            to_ptr(opt_line.as_ref()),
-                            to_ptr(opt_name.as_ref()));
+        st_main(c_args.len() as c_int,
+                c_args.as_ptr(),
+                to_ptr(opt_title.as_ref()),
+                to_ptr(opt_class.as_ref()),
+                to_ptr(opt_io.as_ref()),
+                to_ptr(opt_line.as_ref()),
+                to_ptr(opt_name.as_ref()));
 
-        if exit_code == 0 {
-            exit_code = run();
-        }
+
+        let ev = xlib::XEvent { pad: [0; 24] };
+
+        exit_code = run(ev);
+
     };
 
     std::process::exit(exit_code);

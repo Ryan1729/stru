@@ -373,7 +373,7 @@ static void drawregion(int, int, int, int);
 static void execsh(void);
 static void stty(void);
 static void sigchld(int);
-int run(void);
+int run(XEvent);
 
 static void csidump(void);
 static void csihandle(void);
@@ -4109,9 +4109,8 @@ resize(XEvent *e)
 }
 
 int
-run(void)
+run(XEvent ev)
 {
-	XEvent ev;
 	int w = xw.w, h = xw.h;
 	fd_set rfd;
 	int xfd = XConnectionNumber(xw.dpy), xev, blinkset = 0, dodraw = 0;
@@ -4219,7 +4218,7 @@ run(void)
   return 0;
 }
 
-int
+void
 st_main(int argc, char *argv[], char *opt_title_param, char *opt_class_param,
   char *opt_io_param, char *opt_line_param,
   char *opt_name_param)
@@ -4243,6 +4242,4 @@ st_main(int argc, char *argv[], char *opt_title_param, char *opt_class_param,
 	XSetLocaleModifiers("");
 
 	xinit();
-
-	return 0;
 }
