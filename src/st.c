@@ -373,7 +373,6 @@ static void drawregion(int, int, int, int);
 static void execsh(void);
 static void stty(void);
 static void sigchld(int);
-void run(XEvent);
 
 static void csidump(void);
 static void csihandle(void);
@@ -4184,22 +4183,6 @@ run_step(XEvent ev, int xfd, int  xev, int  blinkset, int  dodraw,
       }
     }
   }
-}
-
-void
-run(XEvent ev)
-{
-  int xfd = XConnectionNumber(xw.dpy), xev, blinkset = 0, dodraw = 0;
-  struct timespec drawtimeout, *tv = NULL, now, last, lastblink;
-  long deltatime;
-  fd_set rfd;
-
-	clock_gettime(CLOCK_MONOTONIC, &last);
-	lastblink = last;
-
-	for (xev = actionfps;;) {
-		run_step(ev, xfd, xev, blinkset, dodraw, drawtimeout, tv, now, last, lastblink, deltatime, rfd);
-	}
 }
 
 void

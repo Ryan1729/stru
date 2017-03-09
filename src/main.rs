@@ -34,7 +34,18 @@ extern "C" {
                opt_name: *const c_char)
                -> c_int;
 
-    fn run(ev: xlib::XEvent);
+    fn run_step(ev: xlib::XEvent,
+                xfd: libc::c_int,
+                xev: libc::c_uint,
+                blinkset: libc::c_int,
+                dodraw: libc::c_int,
+                drawtimeout: libc::timespec,
+                tv: *mut libc::timespec,
+                now: libc::timespec,
+                last: libc::timespec,
+                lastblink: libc::timespec,
+                deltatime: libc::c_long,
+                rfd: libc::fd_set);
 
     fn xloadfonts(fontstr: *const c_char, fontsize: c_double);
     fn xloadcols();
@@ -360,6 +371,11 @@ pub static defaultcs: c_uint = 256;
 #[no_mangle]
 pub static defaultrcs: c_uint = 257;
 
+/* frames per second st should at maximum draw to the screen */
+#[no_mangle]
+pub static xfps: c_uint = 120;
+#[no_mangle]
+pub static actionfps: c_uint = 30;
 
 fn basename(path: &str) -> &str {
     path.rsplitn(2, "/").next().unwrap_or(path)
@@ -956,7 +972,39 @@ and can be found at st.suckless.org\n",
     std::process::exit(0);
 }
 
+unsafe fn run(ev: xlib::XEvent) {
+    let mut xfd = xlib::XConnectionNumber(xw.dpy);
+    let mut xev = 0;
+    let mut blinkset = 0;
+    let mut dodraw = 0;
+    let mut drawtimeout = new!(libc::timespec);
+    let mut tv = 0 as *mut libc::timespec;
+    let mut now = new!(libc::timespec);
+    let mut last = new!(libc::timespec);
+    let mut lastblink = new!(libc::timespec);
+    let mut deltatime = 0;
+    let mut rfd = mem::zeroed();
 
+    clock_gettime(CLOCK_MONOTONIC, &mut last as *mut libc::timespec);
+    lastblink = last;
+
+    loop {
+        xev = actionfps;
+
+        run_step(ev,
+                 xfd,
+                 xev,
+                 blinkset,
+                 dodraw,
+                 drawtimeout,
+                 tv,
+                 now,
+                 last,
+                 lastblink,
+                 deltatime,
+                 rfd);
+    }
+}
 
 unsafe fn selinit() {
     libc::clock_gettime(CLOCK_MONOTONIC, &mut sel.tclick1 as *mut libc::timespec);
