@@ -419,9 +419,9 @@ static void tdectest(char );
 static int32_t tdefcolor(int *, int *, int);
 static void tdeftran(char);
 static inline int match(uint, uint);
-static void ttynew(void);
+void ttynew(void);
 static size_t ttyread(void);
-static void ttyresize(void);
+void ttyresize(void);
 static void ttysend(char *, size_t);
 static void ttywrite(const char *, size_t);
 static void tstrsequence(uchar);
@@ -4115,8 +4115,6 @@ run(XEvent ev)
   struct timespec drawtimeout, *tv = NULL, now, last, lastblink;
   long deltatime;
   fd_set rfd;
-	ttynew();
-	ttyresize();
 
 	clock_gettime(CLOCK_MONOTONIC, &last);
 	lastblink = last;

@@ -39,6 +39,9 @@ extern "C" {
     fn xloadfonts(fontstr: *const c_char, fontsize: c_double);
     fn xloadcols();
 
+    fn ttynew();
+    fn ttyresize();
+
     fn tsetdirt(top: c_int, bot: c_int);
     fn tresize(col: c_int, row: c_int);
     fn tclearregion(x1: c_int, y1: c_int, x2: c_int, y2: c_int);
@@ -944,6 +947,8 @@ and can be found at st.suckless.org\n",
         }
 
         cresize(w, h);
+        ttynew();
+        ttyresize();
 
         exit_code = run(ev);
 
