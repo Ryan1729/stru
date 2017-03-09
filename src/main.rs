@@ -13,6 +13,9 @@ use x11::xft;
 extern crate fontconfig;
 use fontconfig::fontconfig::*;
 
+extern crate errno;
+use errno::errno;
+
 use std::ffi::CString;
 use std::mem;
 use std::ptr;
@@ -52,6 +55,7 @@ extern "C" {
 
     fn ttynew();
     fn ttyresize();
+    fn ttyread() -> size_t;
 
     fn tsetdirt(top: c_int, bot: c_int);
     fn tresize(col: c_int, row: c_int);
@@ -59,6 +63,14 @@ extern "C" {
 
     fn cresize(width: c_int, height: c_int);
 }
+
+// 8888ba.88ba
+// 88  `8b  `8b
+// 88   88   88 .d8888b. .d8888b. 88d888b. .d8888b. .d8888b.
+// 88   88   88 88'  `88 88'  `"" 88'  `88 88'  `88 Y8ooooo.
+// 88   88   88 88.  .88 88.  ... 88       88.  .88       88
+// dP   dP   dP `88888P8 `88888P' dP       `88888P' `88888P'
+
 
 macro_rules! arg_set {
     ( CString $target:ident, $args:ident, $cmd_start:ident, $len:ident, $exe_path:expr) => {{
@@ -130,6 +142,16 @@ macro_rules! is_set_on {
     }
 }
 
+macro_rules! mod_bit {
+    ( $x: expr, $set : expr, $bit : expr) => {
+        if $set != 0 {
+            $x |= $bit;
+        } else {
+            $x &= !$bit;
+        };
+    }
+}
+
 macro_rules! new {
     (TCursor) => {
         TCursor {
@@ -173,6 +195,14 @@ macro_rules! new {
         }
     }
 }
+
+// .d88888b  dP                                        dP
+// 88.    "' 88                                        88
+// `Y88888b. 88d888b. .d8888b. 88d888b. .d8888b. .d888b88
+//       `8b 88'  `88 88'  `88 88'  `88 88ooood8 88'  `88
+// d8'   .8P 88    88 88.  .88 88       88.  ... 88.  .88
+//  Y88888P  dP    dP `88888P8 dP       `88888P' `88888P8
+
 
 #[allow(dead_code)]
 #[allow(non_camel_case_types)]
@@ -256,142 +286,6 @@ enum charset {
 use charset::*;
 
 static mut CURSOR_STORAGE: [TCursor; 2] = [new!(TCursor), new!(TCursor)];
-
-#[no_mangle]
-pub unsafe extern "C" fn tsavecursor() {
-    let alt = is_set_on!(MODE_ALTSCREEN, term.mode, c_int) as usize;
-
-    CURSOR_STORAGE[alt] = term.c.clone();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn tloadcursor() {
-    let alt = is_set_on!(MODE_ALTSCREEN, term.mode, c_int) as usize;
-
-    term.c = CURSOR_STORAGE[alt];
-    tmoveto(CURSOR_STORAGE[alt].x, CURSOR_STORAGE[alt].y);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn tfulldirt() {
-    tsetdirt(0, term.row - 1);
-}
-
-static mut usedfont: Option<CString> = None;
-
-#[no_mangle]
-pub unsafe extern "C" fn loadfonts(fontsize: c_double) {
-    xloadfonts(to_ptr(usedfont.as_ref()), fontsize);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn tswapscreen() {
-    let tmp = term.line;
-
-    term.line = term.alt;
-    term.alt = tmp;
-
-    term.mode ^= MODE_ALTSCREEN as c_int;
-    tfulldirt();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn treset() {
-
-    term.c = new!(TCursor);
-
-    libc::memset(term.tabs as *mut c_void,
-                 0,
-                 term.col as size_t * mem::size_of::<*mut c_int>() as size_t);
-
-    //TODO reduce casting here
-    let mut i: c_uint = config::tabspaces;
-    while i < term.col as c_uint {
-        ptr::write(term.tabs.offset(i as isize), 1);
-        i += config::tabspaces;
-    }
-
-    term.top = 0;
-    term.bot = term.row - 1;
-    term.mode = MODE_WRAP as c_int;
-    term.trantbl = [CS_USA as c_char, CS_USA as c_char, CS_USA as c_char, CS_USA as c_char];
-    term.charset = 0;
-
-    for _ in 0..2 {
-        tmoveto(0, 0);
-        tsavecursor();
-        tclearregion(0, 0, term.col - 1, term.row - 1);
-        tswapscreen();
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn tmoveto(x: c_int, y: c_int) {
-    let miny;
-    let maxy;
-
-    if term.c.state & (CURSOR_ORIGIN as c_char) != 0 {
-        miny = term.top;
-        maxy = term.bot;
-    } else {
-        miny = 0;
-        maxy = term.row - 1;
-    }
-    term.c.state &= !(CURSOR_WRAPNEXT as c_char);
-    term.c.x = limit!(x, 0, term.col - 1);
-    term.c.y = limit!(y, miny, maxy);
-}
-
-
-/*
-    TODO move these into config.rs once they are completely within Rust's purview
- * spaces per tab
- *
- * When you are changing this value, don't forget to adapt the »it« value in
- * the st.info and appropriately install the st.info in the environment where
- * you use this st version.
- *
- *	it#$tabspaces,
- *
- * Secondly make sure your kernel is not expanding tabs. When running `stty
- * -a` »tab0« should appear. You can tell the terminal to not expand tabs by
- *  running following command:
- *
- *	stty tabs
- */
-
-
-#[no_mangle]
-pub static tabspaces: c_uint = 8;
-
-
-
-#[no_mangle]
-pub static defaultcs: c_uint = 256;
-#[no_mangle]
-pub static defaultrcs: c_uint = 257;
-
-/* frames per second st should at maximum draw to the screen */
-#[no_mangle]
-pub static xfps: c_uint = 120;
-#[no_mangle]
-pub static actionfps: c_uint = 30;
-
-#[no_mangle]
-pub static mut allowaltscreen: c_int = 1;
-
-fn basename(path: &str) -> &str {
-    path.rsplitn(2, "/").next().unwrap_or(path)
-}
-
-fn usage(exe_path: &str) {
-    die!("usage:  {} [-aiv] [-c class] [-f font] [-g geometry] [-n name] [-o file]\n
-        [-T title] [-t title] [-w windowid] [[-e] command [args ...]]\n
-        {} [-aiv] [-c class] [-f font] [-g geometry] [-n name] [-o file]\n
-        [-T title] [-t title] [-w windowid] -l line [stty_args ...]\n",
-         exe_path,
-         exe_path);
-}
 
 #[repr(C)]
 #[allow(dead_code)]
@@ -595,8 +489,8 @@ pub struct TCursor {
 pub static mut term: Term = Term {
     row: 0,
     col: 0,
-    line: 0,
-    alt: 0,
+    line: 0 as *mut *mut Glyph,
+    alt: 0 as *mut *mut Glyph,
     hist: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     histi: 0,
     scr: 0,
@@ -619,8 +513,8 @@ pub static mut term: Term = Term {
 pub struct Term {
     row: c_int,
     col: c_int,
-    line: usize,
-    alt: usize,
+    line: *mut *mut Glyph,
+    alt: *mut *mut Glyph,
     hist: [usize; config::histsize],
     histi: c_int,
     scr: c_int,
@@ -640,6 +534,179 @@ pub struct Term {
 
 #[no_mangle]
 pub static mut cmdfd: c_int = 0;
+
+// a88888b.    .8888b
+// d8'   `88    88   "
+// 88           88aaa  88d888b. .d8888b.
+// 88           88     88'  `88 Y8ooooo.
+// Y8.   .88    88     88    88       88
+//  Y88888P'    dP     dP    dP `88888P'
+
+#[no_mangle]
+pub unsafe extern "C" fn tsavecursor() {
+    let alt = is_set_on!(MODE_ALTSCREEN, term.mode, c_int) as usize;
+
+    CURSOR_STORAGE[alt] = term.c.clone();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn tloadcursor() {
+    let alt = is_set_on!(MODE_ALTSCREEN, term.mode, c_int) as usize;
+
+    term.c = CURSOR_STORAGE[alt];
+    tmoveto(CURSOR_STORAGE[alt].x, CURSOR_STORAGE[alt].y);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn tfulldirt() {
+    tsetdirt(0, term.row - 1);
+}
+
+static mut usedfont: Option<CString> = None;
+
+#[no_mangle]
+pub unsafe extern "C" fn loadfonts(fontsize: c_double) {
+    xloadfonts(to_ptr(usedfont.as_ref()), fontsize);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn tswapscreen() {
+    let tmp = term.line;
+
+    term.line = term.alt;
+    term.alt = tmp;
+
+    term.mode ^= MODE_ALTSCREEN as c_int;
+    tfulldirt();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn treset() {
+
+    term.c = new!(TCursor);
+
+    libc::memset(term.tabs as *mut c_void,
+                 0,
+                 term.col as size_t * mem::size_of::<*mut c_int>() as size_t);
+
+    //TODO reduce casting here
+    let mut i: c_uint = config::tabspaces;
+    while i < term.col as c_uint {
+        ptr::write(term.tabs.offset(i as isize), 1);
+        i += config::tabspaces;
+    }
+
+    term.top = 0;
+    term.bot = term.row - 1;
+    term.mode = MODE_WRAP as c_int;
+    term.trantbl = [CS_USA as c_char, CS_USA as c_char, CS_USA as c_char, CS_USA as c_char];
+    term.charset = 0;
+
+    for _ in 0..2 {
+        tmoveto(0, 0);
+        tsavecursor();
+        tclearregion(0, 0, term.col - 1, term.row - 1);
+        tswapscreen();
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn tmoveto(x: c_int, y: c_int) {
+    let miny;
+    let maxy;
+
+    if term.c.state & (CURSOR_ORIGIN as c_char) != 0 {
+        miny = term.top;
+        maxy = term.bot;
+    } else {
+        miny = 0;
+        maxy = term.row - 1;
+    }
+    term.c.state &= !(CURSOR_WRAPNEXT as c_char);
+    term.c.x = limit!(x, 0, term.col - 1);
+    term.c.y = limit!(y, miny, maxy);
+}
+
+//  a88888b.                   .8888b oo
+// d8'   `88                   88   "
+// 88        .d8888b. 88d888b. 88aaa  dP .d8888b.
+// 88        88'  `88 88'  `88 88     88 88'  `88
+// Y8.   .88 88.  .88 88    88 88     88 88.  .88
+//  Y88888P' `88888P' dP    dP dP     dP `8888P88
+//                                            .88
+//                                        d8888P
+
+
+/*
+    TODO move these into config.rs once they are completely within Rust's purview
+ * spaces per tab
+ *
+ * When you are changing this value, don't forget to adapt the »it« value in
+ * the st.info and appropriately install the st.info in the environment where
+ * you use this st version.
+ *
+ *	it#$tabspaces,
+ *
+ * Secondly make sure your kernel is not expanding tabs. When running `stty
+ * -a` »tab0« should appear. You can tell the terminal to not expand tabs by
+ *  running following command:
+ *
+ *	stty tabs
+ */
+
+
+#[no_mangle]
+pub static tabspaces: c_uint = 8;
+
+
+
+#[no_mangle]
+pub static defaultcs: c_uint = 256;
+#[no_mangle]
+pub static defaultrcs: c_uint = 257;
+
+/* frames per second st should at maximum draw to the screen */
+#[no_mangle]
+pub static xfps: c_uint = 120;
+#[no_mangle]
+pub static actionfps: c_uint = 30;
+
+/*
+ * blinking timeout (set to 0 to disable blinking) for the terminal blinking
+ * attribute.
+ */
+#[no_mangle]
+pub static blinktimeout: c_int = 800;
+
+#[no_mangle]
+pub static mut allowaltscreen: c_int = 1;
+
+fn basename(path: &str) -> &str {
+    path.rsplitn(2, "/").next().unwrap_or(path)
+}
+
+fn usage(exe_path: &str) {
+    die!("usage:  {} [-aiv] [-c class] [-f font] [-g geometry] [-n name] [-o file]\n
+        [-T title] [-t title] [-w windowid] [[-e] command [args ...]]\n
+        {} [-aiv] [-c class] [-f font] [-g geometry] [-n name] [-o file]\n
+        [-T title] [-t title] [-w windowid] -l line [stty_args ...]\n",
+         exe_path,
+         exe_path);
+}
+
+
+unsafe fn tattrset(attr: c_int) -> c_int {
+    for i in 0..((term.row - 1) as isize) {
+        for j in 0..((term.col - 1) as isize) {
+            let glyph: Glyph = *(*term.line.offset(i)).offset(j);
+            if is_set_on!(attr, glyph.mode, c_ushort) {
+                return 1;
+            }
+        }
+    }
+
+    return 0;
+}
 
 /*
  * Bitmask returned by XParseGeometry().  Each bit tells if the corresponding
@@ -969,7 +1036,6 @@ and can be found at st.suckless.org\n",
         ttyresize();
 
         run(ev);
-
     };
 
     std::process::exit(0);
@@ -997,6 +1063,29 @@ unsafe fn run(ev: xlib::XEvent) {
         FD_ZERO(&mut rfd as *mut fd_set);
         FD_SET(cmdfd, &mut rfd as *mut fd_set);
         FD_SET(xfd, &mut rfd as *mut fd_set);
+
+        if pselect(max(xfd, cmdfd) + 1,
+                   &mut rfd as *mut fd_set,
+                   0 as *mut libc::fd_set,
+                   0 as *mut libc::fd_set,
+                   tv,
+                   0 as *const libc::sigset_t) < 0 {
+            let errno_value = errno();
+            if errno_value.0 == libc::EINTR {
+                continue;
+            }
+            die!("select failed: {}\n", errno_value);
+        }
+
+        if FD_ISSET(cmdfd, &mut rfd as *mut fd_set) {
+            ttyread();
+            if blinktimeout != 0 {
+                blinkset = tattrset(ATTR_BLINK as c_int);
+                if blinkset != 0 {
+                    mod_bit!(term.mode, 0, MODE_BLINK as c_int);
+                }
+            }
+        }
 
         run_step(ev,
                  xfd,

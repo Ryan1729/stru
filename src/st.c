@@ -384,7 +384,6 @@ static void strhandle(void);
 static void strparse(void);
 static void strreset(void);
 
-static int tattrset(int);
 static void tprinter(char *, size_t);
 static void tdumpsel(void);
 static void tdumpline(int);
@@ -419,7 +418,7 @@ static int32_t tdefcolor(int *, int *, int);
 static void tdeftran(char);
 static inline int match(uint, uint);
 void ttynew(void);
-static size_t ttyread(void);
+size_t ttyread(void);
 void ttyresize(void);
 static void ttysend(char *, size_t);
 static void ttywrite(const char *, size_t);
@@ -1583,21 +1582,6 @@ ttyresize(void)
 	w.ws_ypixel = xw.th;
 	if (ioctl(cmdfd, TIOCSWINSZ, &w) < 0)
 		fprintf(stderr, "Couldn't set window size: %s\n", strerror(errno));
-}
-
-int
-tattrset(int attr)
-{
-	int i, j;
-
-	for (i = 0; i < term.row-1; i++) {
-		for (j = 0; j < term.col-1; j++) {
-			if (term.line[i][j].mode & attr)
-				return 1;
-		}
-	}
-
-	return 0;
 }
 
 void
@@ -4111,20 +4095,6 @@ void
 run_step(XEvent ev, int xfd, int  xev, int  blinkset, int  dodraw,
    struct timespec drawtimeout, struct timespec* tv,struct timespec now,
    struct timespec last, struct timespec lastblink, long deltatime, fd_set rfd) {
-
-  if (pselect(MAX(xfd, cmdfd)+1, &rfd, NULL, NULL, tv, NULL) < 0) {
-    if (errno == EINTR)
-      return;
-    die("select failed: %s\n", strerror(errno));
-  }
-  if (FD_ISSET(cmdfd, &rfd)) {
-    ttyread();
-    if (blinktimeout) {
-      blinkset = tattrset(ATTR_BLINK);
-      if (!blinkset)
-        MODBIT(term.mode, 0, MODE_BLINK);
-    }
-  }
 
   if (FD_ISSET(xfd, &rfd))
     xev = actionfps;
