@@ -4109,6 +4109,84 @@ resize(XEvent *e)
 }
 
 void
+run_step(XEvent ev, int xfd, int  xev, int  blinkset, int  dodraw,
+   struct timespec drawtimeout, struct timespec* tv,struct timespec now,
+   struct timespec last, struct timespec lastblink, long deltatime, fd_set rfd) {
+  FD_ZERO(&rfd);
+  FD_SET(cmdfd, &rfd);
+  FD_SET(xfd, &rfd);
+
+  if (pselect(MAX(xfd, cmdfd)+1, &rfd, NULL, NULL, tv, NULL) < 0) {
+    if (errno == EINTR)
+      return;
+    die("select failed: %s\n", strerror(errno));
+  }
+  if (FD_ISSET(cmdfd, &rfd)) {
+    ttyread();
+    if (blinktimeout) {
+      blinkset = tattrset(ATTR_BLINK);
+      if (!blinkset)
+        MODBIT(term.mode, 0, MODE_BLINK);
+    }
+  }
+
+  if (FD_ISSET(xfd, &rfd))
+    xev = actionfps;
+
+  clock_gettime(CLOCK_MONOTONIC, &now);
+  drawtimeout.tv_sec = 0;
+  drawtimeout.tv_nsec =  (1000 * 1E6)/ xfps;
+  tv = &drawtimeout;
+
+  dodraw = 0;
+  if (blinktimeout && TIMEDIFF(now, lastblink) > blinktimeout) {
+    tsetdirtattr(ATTR_BLINK);
+    term.mode ^= MODE_BLINK;
+    lastblink = now;
+    dodraw = 1;
+  }
+  deltatime = TIMEDIFF(now, last);
+  if (deltatime > 1000 / (xev ? xfps : actionfps)) {
+    dodraw = 1;
+    last = now;
+  }
+
+  if (dodraw) {
+    while (XPending(xw.dpy)) {
+      XNextEvent(xw.dpy, &ev);
+      if (XFilterEvent(&ev, None))
+        return;
+      if (handler[ev.type])
+        (handler[ev.type])(&ev);
+    }
+
+    draw();
+    XFlush(xw.dpy);
+
+    if (xev && !FD_ISSET(xfd, &rfd))
+      xev--;
+    if (!FD_ISSET(cmdfd, &rfd) && !FD_ISSET(xfd, &rfd)) {
+      if (blinkset) {
+        if (TIMEDIFF(now, lastblink) \
+            > blinktimeout) {
+          drawtimeout.tv_nsec = 1000;
+        } else {
+          drawtimeout.tv_nsec = (1E6 * \
+            (blinktimeout - \
+            TIMEDIFF(now,
+              lastblink)));
+        }
+        drawtimeout.tv_sec = \
+            drawtimeout.tv_nsec / 1E9;
+        drawtimeout.tv_nsec %= (long)1E9;
+      } else {
+        tv = NULL;
+      }
+    }
+  }
+}
+
+void
 run(XEvent ev)
 {
   int xfd = XConnectionNumber(xw.dpy), xev, blinkset = 0, dodraw = 0;
@@ -4120,78 +4198,7 @@ run(XEvent ev)
 	lastblink = last;
 
 	for (xev = actionfps;;) {
-		FD_ZERO(&rfd);
-		FD_SET(cmdfd, &rfd);
-		FD_SET(xfd, &rfd);
-
-		if (pselect(MAX(xfd, cmdfd)+1, &rfd, NULL, NULL, tv, NULL) < 0) {
-			if (errno == EINTR)
-				continue;
-			die("select failed: %s\n", strerror(errno));
-		}
-		if (FD_ISSET(cmdfd, &rfd)) {
-			ttyread();
-			if (blinktimeout) {
-				blinkset = tattrset(ATTR_BLINK);
-				if (!blinkset)
-					MODBIT(term.mode, 0, MODE_BLINK);
-			}
-		}
-
-		if (FD_ISSET(xfd, &rfd))
-			xev = actionfps;
-
-		clock_gettime(CLOCK_MONOTONIC, &now);
-		drawtimeout.tv_sec = 0;
-		drawtimeout.tv_nsec =  (1000 * 1E6)/ xfps;
-		tv = &drawtimeout;
-
-		dodraw = 0;
-		if (blinktimeout && TIMEDIFF(now, lastblink) > blinktimeout) {
-			tsetdirtattr(ATTR_BLINK);
-			term.mode ^= MODE_BLINK;
-			lastblink = now;
-			dodraw = 1;
-		}
-		deltatime = TIMEDIFF(now, last);
-		if (deltatime > 1000 / (xev ? xfps : actionfps)) {
-			dodraw = 1;
-			last = now;
-		}
-
-		if (dodraw) {
-			while (XPending(xw.dpy)) {
-				XNextEvent(xw.dpy, &ev);
-				if (XFilterEvent(&ev, None))
-					continue;
-				if (handler[ev.type])
-					(handler[ev.type])(&ev);
-			}
-
-			draw();
-			XFlush(xw.dpy);
-
-			if (xev && !FD_ISSET(xfd, &rfd))
-				xev--;
-			if (!FD_ISSET(cmdfd, &rfd) && !FD_ISSET(xfd, &rfd)) {
-				if (blinkset) {
-					if (TIMEDIFF(now, lastblink) \
-							> blinktimeout) {
-						drawtimeout.tv_nsec = 1000;
-					} else {
-						drawtimeout.tv_nsec = (1E6 * \
-							(blinktimeout - \
-							TIMEDIFF(now,
-								lastblink)));
-					}
-					drawtimeout.tv_sec = \
-					    drawtimeout.tv_nsec / 1E9;
-					drawtimeout.tv_nsec %= (long)1E9;
-				} else {
-					tv = NULL;
-				}
-			}
-		}
+		run_step(ev, xfd, xev, blinkset, dodraw, drawtimeout, tv, now, last, lastblink, deltatime, rfd);
 	}
 }
 
