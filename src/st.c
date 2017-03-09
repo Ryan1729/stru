@@ -526,7 +526,7 @@ extern XWindow xw;
 extern Term term;
 static CSIEscape csiescseq;
 static STREscape strescseq;
-static int cmdfd;
+extern int cmdfd;
 static pid_t pid;
 extern Selection sel;
 static int iofd = 1;
@@ -4111,9 +4111,6 @@ void
 run_step(XEvent ev, int xfd, int  xev, int  blinkset, int  dodraw,
    struct timespec drawtimeout, struct timespec* tv,struct timespec now,
    struct timespec last, struct timespec lastblink, long deltatime, fd_set rfd) {
-  FD_ZERO(&rfd);
-  FD_SET(cmdfd, &rfd);
-  FD_SET(xfd, &rfd);
 
   if (pselect(MAX(xfd, cmdfd)+1, &rfd, NULL, NULL, tv, NULL) < 0) {
     if (errno == EINTR)

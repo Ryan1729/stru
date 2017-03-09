@@ -377,6 +377,9 @@ pub static xfps: c_uint = 120;
 #[no_mangle]
 pub static actionfps: c_uint = 30;
 
+#[no_mangle]
+pub static mut allowaltscreen: c_int = 1;
+
 fn basename(path: &str) -> &str {
     path.rsplitn(2, "/").next().unwrap_or(path)
 }
@@ -636,7 +639,7 @@ pub struct Term {
 }
 
 #[no_mangle]
-pub static mut allowaltscreen: c_int = 1;
+pub static mut cmdfd: c_int = 0;
 
 /*
  * Bitmask returned by XParseGeometry().  Each bit tells if the corresponding
@@ -990,6 +993,10 @@ unsafe fn run(ev: xlib::XEvent) {
 
     loop {
         xev = actionfps;
+
+        FD_ZERO(&mut rfd as *mut fd_set);
+        FD_SET(cmdfd, &mut rfd as *mut fd_set);
+        FD_SET(xfd, &mut rfd as *mut fd_set);
 
         run_step(ev,
                  xfd,
