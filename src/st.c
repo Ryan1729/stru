@@ -455,7 +455,7 @@ static void unmap(XEvent *);
 static char *kmap(KeySym, uint);
 static void kpress(XEvent *);
 static void cmessage(XEvent *);
-static void cresize(int, int);
+void cresize(int, int);
 static void resize(XEvent *);
 static void focus(XEvent *);
 static void brelease(XEvent *);
@@ -4111,29 +4111,10 @@ resize(XEvent *e)
 int
 run(XEvent ev)
 {
-	int w = xw.w, h = xw.h;
-	fd_set rfd;
-	int xfd = XConnectionNumber(xw.dpy), xev, blinkset = 0, dodraw = 0;
-	struct timespec drawtimeout, *tv = NULL, now, last, lastblink;
-	long deltatime;
-
-	/* Waiting for window mapping */
-	do {
-		XNextEvent(xw.dpy, &ev);
-		/*
-		 * This XFilterEvent call is required because of XOpenIM. It
-		 * does filter out the key event and some client message for
-		 * the input method too.
-		 */
-		if (XFilterEvent(&ev, None))
-			continue;
-		if (ev.type == ConfigureNotify) {
-			w = ev.xconfigure.width;
-			h = ev.xconfigure.height;
-		}
-	} while (ev.type != MapNotify);
-
-	cresize(w, h);
+  int xfd = XConnectionNumber(xw.dpy), xev, blinkset = 0, dodraw = 0;
+  struct timespec drawtimeout, *tv = NULL, now, last, lastblink;
+  long deltatime;
+  fd_set rfd;
 	ttynew();
 	ttyresize();
 

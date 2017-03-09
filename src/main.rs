@@ -42,6 +42,8 @@ extern "C" {
     fn tsetdirt(top: c_int, bot: c_int);
     fn tresize(col: c_int, row: c_int);
     fn tclearregion(x1: c_int, y1: c_int, x2: c_int, y2: c_int);
+
+    fn cresize(width: c_int, height: c_int);
 }
 
 macro_rules! arg_set {
@@ -911,7 +913,37 @@ and can be found at st.suckless.org\n",
                 to_ptr(opt_name.as_ref()));
 
 
-        let ev = xlib::XEvent { pad: [0; 24] };
+        let mut ev = xlib::XEvent { pad: [0; 24] };
+
+        let mut w = xw.w as c_int;
+        let mut h = xw.h as c_int;
+        /* Waiting for window mapping */
+        loop {
+            xlib::XNextEvent(xw.dpy, &mut ev as *mut xlib::XEvent);
+            /*
+             * This XFilterEvent call is required because of XOpenIM. It
+             * does filter out the key event and some client message for
+             * the input method too.
+             */
+            if xlib::XFilterEvent(&mut ev as *mut xlib::XEvent, 0) != 0 {
+                continue;
+            }
+
+
+            let type_ = ev.get_type();
+            if type_ == xlib::ConfigureNotify {
+                let config_event: xlib::XConfigureEvent = From::from(ev);
+
+                w = config_event.width;
+                h = config_event.height;
+            }
+
+            if type_ == xlib::MapNotify {
+                break;
+            }
+        }
+
+        cresize(w, h);
 
         exit_code = run(ev);
 
