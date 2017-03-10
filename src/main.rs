@@ -667,7 +667,7 @@ pub static defaultrcs: c_uint = 257;
 
 /* frames per second st should at maximum draw to the screen */
 #[no_mangle]
-pub static xfps: c_uint = 120;
+pub static xfps: c_long = 120;
 #[no_mangle]
 pub static actionfps: c_uint = 30;
 
@@ -1086,6 +1086,15 @@ unsafe fn run(ev: xlib::XEvent) {
                 }
             }
         }
+
+        if FD_ISSET(xfd, &mut rfd as *mut fd_set) {
+            xev = actionfps;
+        }
+
+        clock_gettime(CLOCK_MONOTONIC, &mut now as *mut libc::timespec);
+        drawtimeout.tv_sec = 0;
+        drawtimeout.tv_nsec = (1_000_000_000) / xfps;
+        tv = &mut drawtimeout as *mut libc::timespec;
 
         run_step(ev,
                  xfd,

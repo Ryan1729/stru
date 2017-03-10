@@ -4096,14 +4096,6 @@ run_step(XEvent ev, int xfd, int  xev, int  blinkset, int  dodraw,
    struct timespec drawtimeout, struct timespec* tv,struct timespec now,
    struct timespec last, struct timespec lastblink, long deltatime, fd_set rfd) {
 
-  if (FD_ISSET(xfd, &rfd))
-    xev = actionfps;
-
-  clock_gettime(CLOCK_MONOTONIC, &now);
-  drawtimeout.tv_sec = 0;
-  drawtimeout.tv_nsec =  (1000 * 1E6)/ xfps;
-  tv = &drawtimeout;
-
   dodraw = 0;
   if (blinktimeout && TIMEDIFF(now, lastblink) > blinktimeout) {
     tsetdirtattr(ATTR_BLINK);
