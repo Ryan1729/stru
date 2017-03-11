@@ -53,6 +53,8 @@ extern "C" {
 
     fn xloadfonts(fontstr: *const c_char, fontsize: c_double);
 
+    fn draw();
+
     fn ttynew();
     fn ttyresize();
     fn ttyread() -> size_t;
@@ -62,6 +64,8 @@ extern "C" {
     fn tclearregion(x1: c_int, y1: c_int, x2: c_int, y2: c_int);
 
     fn cresize(width: c_int, height: c_int);
+
+    fn call_handler(ev: xlib::XEvent);
 }
 
 // 8888ba.88ba
@@ -129,6 +133,12 @@ macro_rules! limit {
         } else {
             $input
         }
+    }
+}
+
+macro_rules! time_diff {
+    ( $t1: expr, $t2 : expr ) => {
+        ($t1.tv_sec-$t2.tv_sec) * 1000 + ($t1.tv_nsec-$t2.tv_nsec)/ 1_000_000
     }
 }
 
@@ -757,7 +767,7 @@ pub static actionfps: c_uint = 30;
  * attribute.
  */
 #[no_mangle]
-pub static blinktimeout: c_int = 800;
+pub static blinktimeout: c_long = 800;
 #[no_mangle]
 pub static colorname_total_len: c_int = (config::colorname_len + config::extra_len) as c_int;
 
@@ -1175,11 +1185,27 @@ and can be found at st.suckless.org\n",
     std::process::exit(0);
 }
 
-unsafe fn run(ev: xlib::XEvent) {
+
+unsafe fn tsetdirtattr(attr: c_int) {
+
+    for i in 0..((term.row - 1) as isize) {
+        for j in 0..((term.col - 1) as isize) {
+            let glyph: Glyph = *(*term.line.offset(i)).offset(j);
+            if is_set_on!(attr, glyph.mode, c_ushort) {
+                tsetdirt(i as c_int, i as c_int);
+                break;
+            }
+        }
+    }
+
+}
+
+
+unsafe fn run(mut ev: xlib::XEvent) {
     let mut xfd = xlib::XConnectionNumber(xw.dpy);
     let mut xev = 0;
     let mut blinkset = 0;
-    let mut dodraw = 0;
+    let mut dodraw = false;
     let mut drawtimeout = new!(libc::timespec);
     let mut tv = 0 as *mut libc::timespec;
     let mut now = new!(libc::timespec);
@@ -1230,18 +1256,50 @@ unsafe fn run(ev: xlib::XEvent) {
         drawtimeout.tv_nsec = (1_000_000_000) / xfps;
         tv = &mut drawtimeout as *mut libc::timespec;
 
-        run_step(ev,
-                 xfd,
-                 xev,
-                 blinkset,
-                 dodraw,
-                 drawtimeout,
-                 tv,
-                 now,
-                 last,
-                 lastblink,
-                 deltatime,
-                 rfd);
+        dodraw = false;
+        if blinktimeout != 0 && time_diff!(now, lastblink) > blinktimeout {
+            tsetdirtattr(ATTR_BLINK as c_int);
+            term.mode ^= MODE_BLINK as c_int;
+            lastblink = now;
+            dodraw = true;
+        }
+        deltatime = time_diff!(now, last);
+        if deltatime > 1000 / (if xev != 0 { xfps } else { actionfps as c_long }) {
+            dodraw = true;
+            last = now;
+        }
+
+        if dodraw {
+            while xlib::XPending(xw.dpy) != 0 {
+                xlib::XNextEvent(xw.dpy, &mut ev as *mut xlib::XEvent);
+                if xlib::XFilterEvent(&mut ev as *mut xlib::XEvent, 0) != 0 {
+                    continue;
+                }
+                call_handler(ev);
+            }
+
+            draw();
+            xlib::XFlush(xw.dpy);
+
+            if xev != 0 && !FD_ISSET(xfd, &mut rfd as *mut fd_set) {
+                xev -= 1;
+            }
+            if !FD_ISSET(cmdfd, &mut rfd as *mut fd_set) &&
+               !FD_ISSET(xfd, &mut rfd as *mut fd_set) {
+                if blinkset != 0 {
+                    if time_diff!(now, lastblink) > blinktimeout {
+                        drawtimeout.tv_nsec = 1000;
+                    } else {
+                        drawtimeout.tv_nsec =
+                            (1_000_000 * (blinktimeout - time_diff!(now, lastblink))) as c_long;
+                    }
+                    drawtimeout.tv_sec = drawtimeout.tv_nsec / 1_000_000_000;
+                    drawtimeout.tv_nsec %= 1_000_000_000;
+                } else {
+                    tv = 0 as *mut timespec;
+                }
+            }
+        }
     }
 }
 

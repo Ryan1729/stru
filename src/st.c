@@ -369,7 +369,7 @@ typedef struct {
 } DC;
 
 static void die(const char *, ...);
-static void draw(void);
+void draw(void);
 static void redraw(void);
 static void drawregion(int, int, int, int);
 static void execsh(void);
@@ -410,7 +410,6 @@ static void tsetchar(Rune, Glyph *, int, int);
 static void tsetscroll(int, int);
 extern void tswapscreen(void);
 void tsetdirt(int, int);
-static void tsetdirtattr(int);
 static void tsetmode(int, int, int *, int);
 extern void tfulldirt(void);
 static void techo(Rune);
@@ -495,6 +494,13 @@ static char *xstrdup(char *);
 /* created for port functions */
 extern void tsavecursor(void);
 extern void tloadcursor(void);
+
+
+
+
+
+void call_handler(XEvent);
+
 
 static void (*handler[LASTEvent])(XEvent *) = {
 	[KeyPress] = kpress,
@@ -1597,21 +1603,6 @@ tsetdirt(int top, int bot)
 
 	for (i = top; i <= bot; i++)
 		term.dirty[i] = 1;
-}
-
-void
-tsetdirtattr(int attr)
-{
-	int i, j;
-
-	for (i = 0; i < term.row-1; i++) {
-		for (j = 0; j < term.col-1; j++) {
-			if (term.line[i][j].mode & attr) {
-				tsetdirt(i, i);
-				break;
-			}
-		}
-	}
 }
 
 void
@@ -4020,57 +4011,10 @@ resize(XEvent *e)
 	ttyresize();
 }
 
-void
-run_step(XEvent ev, int xfd, int  xev, int  blinkset, int  dodraw,
-   struct timespec drawtimeout, struct timespec* tv,struct timespec now,
-   struct timespec last, struct timespec lastblink, long deltatime, fd_set rfd) {
-
-  dodraw = 0;
-  if (blinktimeout && TIMEDIFF(now, lastblink) > blinktimeout) {
-    tsetdirtattr(ATTR_BLINK);
-    term.mode ^= MODE_BLINK;
-    lastblink = now;
-    dodraw = 1;
-  }
-  deltatime = TIMEDIFF(now, last);
-  if (deltatime > 1000 / (xev ? xfps : actionfps)) {
-    dodraw = 1;
-    last = now;
-  }
-
-  if (dodraw) {
-    while (XPending(xw.dpy)) {
-      XNextEvent(xw.dpy, &ev);
-      if (XFilterEvent(&ev, None))
-        return;
-      if (handler[ev.type])
+void call_handler(XEvent ev) {
+  if (handler[ev.type]) {
         (handler[ev.type])(&ev);
     }
-
-    draw();
-    XFlush(xw.dpy);
-
-    if (xev && !FD_ISSET(xfd, &rfd))
-      xev--;
-    if (!FD_ISSET(cmdfd, &rfd) && !FD_ISSET(xfd, &rfd)) {
-      if (blinkset) {
-        if (TIMEDIFF(now, lastblink) \
-            > blinktimeout) {
-          drawtimeout.tv_nsec = 1000;
-        } else {
-          drawtimeout.tv_nsec = (1E6 * \
-            (blinktimeout - \
-            TIMEDIFF(now,
-              lastblink)));
-        }
-        drawtimeout.tv_sec = \
-            drawtimeout.tv_nsec / 1E9;
-        drawtimeout.tv_nsec %= (long)1E9;
-      } else {
-        tv = NULL;
-      }
-    }
-  }
 }
 
 void
