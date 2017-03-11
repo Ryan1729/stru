@@ -9,6 +9,7 @@ use libc::*;
 extern crate x11;
 use x11::xlib;
 use x11::xft;
+use x11::xrender;
 
 extern crate fontconfig;
 use fontconfig::fontconfig::*;
@@ -51,7 +52,6 @@ extern "C" {
                 rfd: libc::fd_set);
 
     fn xloadfonts(fontstr: *const c_char, fontsize: c_double);
-    fn xloadcols();
 
     fn ttynew();
     fn ttyresize();
@@ -149,6 +149,12 @@ macro_rules! mod_bit {
         } else {
             $x &= !$bit;
         };
+    }
+}
+
+macro_rules! is_between {
+    ( $x: expr, $min : expr, $max : expr) => {
+        $min <= $x && $x <= $max
     }
 }
 
@@ -627,6 +633,70 @@ pub unsafe extern "C" fn tmoveto(x: c_int, y: c_int) {
     term.c.y = limit!(y, miny, maxy);
 }
 
+fn sixd_to_16bit(x: c_int) -> c_ushort {
+    (if x == 0 { 0 } else { 0x3737 + 0x2828 * x }) as c_ushort
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn xloadcolor(i: c_int, name: *const c_char, ncolor: *mut Color) -> c_int {
+    let mut color: xrender::XRenderColor = mem::zeroed();
+    color.alpha = 0xffff;
+
+    if name.is_null() {
+        if is_between!(i, 16, 255) {
+            /* 256 color */
+            if i < 6 * 6 * 6 + 16 {
+                /* same colors as xterm */
+                color.red = sixd_to_16bit(((i - 16) / 36) % 6);
+                color.green = sixd_to_16bit(((i - 16) / 6) % 6);
+                color.blue = sixd_to_16bit(((i - 16) / 1) % 6);
+            } else {
+                /* greyscale */
+                color.red = (0x0808 + 0x0a0a * (i - (6 * 6 * 6 + 16))) as c_ushort;
+                color.blue = color.red;
+                color.green = color.red;
+            }
+            return xft::XftColorAllocValue(xw.dpy, xw.vis, xw.cmap, &color, ncolor);
+        } else {
+            if let Some(col_name) = get_colourname(i) {
+                return xft::XftColorAllocName(xw.dpy,
+                                              xw.vis,
+                                              xw.cmap,
+                                              CString::new(col_name).unwrap().as_ptr(),
+                                              ncolor);
+            } else {
+                return xft::XftColorAllocName(xw.dpy, xw.vis, xw.cmap, ptr::null(), ncolor);
+            }
+        }
+    } else {
+        return xft::XftColorAllocName(xw.dpy, xw.vis, xw.cmap, name, ncolor);
+    }
+
+}
+
+static mut loaded: bool = false;
+#[no_mangle]
+pub unsafe extern "C" fn xloadcols() {
+    if loaded {
+        let mut current = &mut dc.col[0] as *mut Color;
+        for i in 0..(dc.col.len() as isize) {
+            xft::XftColorFree(xw.dpy, xw.vis, xw.cmap, current.offset(i));
+        }
+    }
+
+    for i in 0..(dc.col.len() as c_int) {
+        if xloadcolor(i, 0 as *const c_char, &mut dc.col[i as usize] as *mut Color) == 0 {
+            if let Some(name) = get_colourname(i) {
+                die!("Could not allocate color {:?}\n", name);
+            } else {
+                die!("Could not allocate color index {}\n", i);
+            }
+        }
+    }
+    loaded = true;
+}
+
+
 //  a88888b.                   .8888b oo
 // d8'   `88                   88   "
 // 88        .d8888b. 88d888b. 88aaa  dP .d8888b.
@@ -680,6 +750,7 @@ pub static blinktimeout: c_int = 800;
 
 #[no_mangle]
 pub static mut allowaltscreen: c_int = 1;
+pub static mut colourname: Option<Vec<*const c_char>> = None;
 
 fn basename(path: &str) -> &str {
     path.rsplitn(2, "/").next().unwrap_or(path)
@@ -706,6 +777,17 @@ unsafe fn tattrset(attr: c_int) -> c_int {
     }
 
     return 0;
+}
+
+fn get_colourname(i: c_int) -> Option<&'static str> {
+    let index = i as usize;
+    if is_between!(index, 0, config::colorname_len) {
+        Some(config::colorname[index])
+    } else if is_between!(index, 256, 256 + config::extra_len) {
+        Some(config::colorname[index - 256])
+    } else {
+        None
+    }
 }
 
 /*

@@ -433,6 +433,7 @@ static void xclear(int, int, int, int);
 static void xdrawcursor(void);
 static void xinit(void);
 void xloadcols(void);
+int xloadcolor(int, const char*, Color*);
 static int xsetcolorname(int, const char *);
 static int xgeommasktogravity(int);
 static int xloadfont(Font *, FcPattern *);
@@ -3101,58 +3102,6 @@ xresize(int col, int row)
 			DefaultDepth(xw.dpy, xw.scr));
 	XftDrawChange(xw.draw, xw.buf);
 	xclear(0, 0, xw.w, xw.h);
-}
-
-ushort
-sixd_to_16bit(int x)
-{
-	return x == 0 ? 0 : 0x3737 + 0x2828 * x;
-}
-
-int
-xloadcolor(int i, const char *name, Color *ncolor)
-{
-	XRenderColor color = { .alpha = 0xffff };
-
-	if (!name) {
-		if (BETWEEN(i, 16, 255)) { /* 256 color */
-			if (i < 6*6*6+16) { /* same colors as xterm */
-				color.red   = sixd_to_16bit( ((i-16)/36)%6 );
-				color.green = sixd_to_16bit( ((i-16)/6) %6 );
-				color.blue  = sixd_to_16bit( ((i-16)/1) %6 );
-			} else { /* greyscale */
-				color.red = 0x0808 + 0x0a0a * (i - (6*6*6+16));
-				color.green = color.blue = color.red;
-			}
-			return XftColorAllocValue(xw.dpy, xw.vis,
-			                          xw.cmap, &color, ncolor);
-		} else
-			name = colorname[i];
-	}
-
-	return XftColorAllocName(xw.dpy, xw.vis, xw.cmap, name, ncolor);
-}
-
-void
-xloadcols(void)
-{
-	int i;
-	static int loaded;
-	Color *cp;
-
-	if (loaded) {
-		for (cp = dc.col; cp < &dc.col[LEN(dc.col)]; ++cp)
-			XftColorFree(xw.dpy, xw.vis, xw.cmap, cp);
-	}
-
-	for (i = 0; i < LEN(dc.col); i++)
-		if (!xloadcolor(i, NULL, &dc.col[i])) {
-			if (colorname[i])
-				die("Could not allocate color '%s'\n", colorname[i]);
-			else
-				die("Could not allocate color %d\n", i);
-		}
-	loaded = 1;
 }
 
 int
