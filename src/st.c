@@ -361,7 +361,9 @@ typedef struct {
 
 /* Drawing Context */
 typedef struct {
-	Color col[MAX(LEN(colorname), 256)];
+  //TODO this hardcosed value should be MAX(LEN(colorname), 256)
+  //but will leavie it like this because we'll  delete it later anyway
+	Color col[258];
 	Font font, bfont, ifont, ibfont;
 	GC gc;
 } DC;
@@ -3344,28 +3346,6 @@ xzoomreset(const Arg *arg)
 void
 xinit(void)
 {
-
-	XColor xmousefg, xmousebg;
-  Cursor cursor;
-
-	/* white cursor, black outline */
-	cursor = XCreateFontCursor(xw.dpy, mouseshape);
-	XDefineCursor(xw.dpy, xw.win, cursor);
-
-	if (XParseColor(xw.dpy, xw.cmap, colorname[mousefg], &xmousefg) == 0) {
-		xmousefg.red   = 0xffff;
-		xmousefg.green = 0xffff;
-		xmousefg.blue  = 0xffff;
-	}
-
-	if (XParseColor(xw.dpy, xw.cmap, colorname[mousebg], &xmousebg) == 0) {
-		xmousebg.red   = 0x0000;
-		xmousebg.green = 0x0000;
-		xmousebg.blue  = 0x0000;
-	}
-
-	XRecolorCursor(xw.dpy, cursor, &xmousefg, &xmousebg);
-
 	xresettitle();
 	XMapWindow(xw.dpy, xw.win);
 	xhints();

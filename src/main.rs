@@ -199,7 +199,18 @@ macro_rules! new {
             tv_sec : 0,
             tv_nsec : 0
         }
-    }
+    };
+
+    (xlib::XColor) => {
+        xlib::XColor {
+    pixel: 0,
+    red: 0,
+    green: 0,
+    blue: 0,
+    flags: 0,
+    pad: 0,
+}
+    };
 }
 
 // .d88888b  dP                                        dP
@@ -747,6 +758,8 @@ pub static actionfps: c_uint = 30;
  */
 #[no_mangle]
 pub static blinktimeout: c_int = 800;
+#[no_mangle]
+pub static colorname_total_len: c_int = (config::colorname_len + config::extra_len) as c_int;
 
 #[no_mangle]
 pub static mut allowaltscreen: c_int = 1;
@@ -952,6 +965,45 @@ unsafe fn xinit(opt_embed: Option<String>) {
                           xlib::PropModeReplace,
                           &pid_array as *const c_uchar,
                           1);
+
+    let mut xmousefg = new!(xlib::XColor);
+    let mut xmousebg = new!(xlib::XColor);
+
+    /* white cursor, black outline */
+    let mut cursor = xlib::XCreateFontCursor(xw.dpy, config::mouseshape as c_uint);
+    xlib::XDefineCursor(xw.dpy, xw.win, cursor);
+
+    let mut fg_result = 0;
+    if let Some(fg_name) = get_colourname(config::mousefg) {
+        fg_result = xlib::XParseColor(xw.dpy,
+                                      xw.cmap,
+                                      CString::new(fg_name).unwrap().as_ptr(),
+                                      &mut xmousefg as *mut xlib::XColor)
+    }
+    if fg_result == 0 {
+        xmousefg.red = 0xffff;
+        xmousefg.green = 0xffff;
+        xmousefg.blue = 0xffff;
+    }
+
+    let mut bg_result = 0;
+    if let Some(bg_name) = get_colourname(config::mousebg) {
+        bg_result = xlib::XParseColor(xw.dpy,
+                                      xw.cmap,
+                                      CString::new(bg_name).unwrap().as_ptr(),
+                                      &mut xmousebg as *mut xlib::XColor)
+    }
+    if bg_result == 0 {
+        xmousebg.red = 0x0000;
+        xmousebg.green = 0x0000;
+        xmousebg.blue = 0x0000;
+    }
+
+
+    xlib::XRecolorCursor(xw.dpy,
+                         cursor,
+                         &mut xmousefg as *mut xlib::XColor,
+                         &mut xmousebg as *mut xlib::XColor);
 
 }
 

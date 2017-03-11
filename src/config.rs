@@ -79,3 +79,12 @@ pub const defaultfg: c_uint = 7;
 pub const defaultbg: c_uint = 0;
 // pub const defaultcs: c_uint = 256;
 // pub const defaultrcs: c_uint = 257;
+
+/*
+ * Default colour and shape of the mouse cursor
+ * see https://tronche.com/gui/x/xlib/appendix/b/ for shape numbers
+ */
+
+pub const mouseshape : c_int = 152;
+pub const mousefg : c_int = 7;
+pub const mousebg : c_int = 0;
