@@ -38,19 +38,6 @@ extern "C" {
                opt_name: *const c_char)
                -> c_int;
 
-    fn run_step(ev: xlib::XEvent,
-                xfd: libc::c_int,
-                xev: libc::c_uint,
-                blinkset: libc::c_int,
-                dodraw: libc::c_int,
-                drawtimeout: libc::timespec,
-                tv: *mut libc::timespec,
-                now: libc::timespec,
-                last: libc::timespec,
-                lastblink: libc::timespec,
-                deltatime: libc::c_long,
-                rfd: libc::fd_set);
-
     fn xloadfonts(fontstr: *const c_char, fontsize: c_double);
 
     fn draw();
@@ -699,9 +686,9 @@ static mut loaded: bool = false;
 #[no_mangle]
 pub unsafe extern "C" fn xloadcols() {
     if loaded {
-        let mut current = &mut dc.col[0] as *mut Color;
+        let first_colour = &mut dc.col[0] as *mut Color;
         for i in 0..(dc.col.len() as isize) {
-            xft::XftColorFree(xw.dpy, xw.vis, xw.cmap, current.offset(i));
+            xft::XftColorFree(xw.dpy, xw.vis, xw.cmap, first_colour.offset(i));
         }
     }
 
@@ -804,10 +791,10 @@ unsafe fn tattrset(attr: c_int) -> c_int {
 
 fn get_colourname(i: c_int) -> Option<&'static str> {
     let index = i as usize;
-    if is_between!(index, 0, config::colorname_len) {
+    if is_between!(i, 0, config::colorname_len as i32) {
         Some(config::colorname[index])
-    } else if is_between!(index, 256, 256 + config::extra_len) {
-        Some(config::colorname[index - 256])
+    } else if is_between!(i, 256, 256 + config::extra_len as i32) {
+        Some(config::extras[index - 256])
     } else {
         None
     }
@@ -980,7 +967,7 @@ unsafe fn xinit(opt_embed: Option<String>) {
     let mut xmousebg = new!(xlib::XColor);
 
     /* white cursor, black outline */
-    let mut cursor = xlib::XCreateFontCursor(xw.dpy, config::mouseshape as c_uint);
+    let cursor = xlib::XCreateFontCursor(xw.dpy, config::mouseshape as c_uint);
     xlib::XDefineCursor(xw.dpy, xw.win, cursor);
 
     let mut fg_result = 0;
@@ -1202,16 +1189,16 @@ unsafe fn tsetdirtattr(attr: c_int) {
 
 
 unsafe fn run(mut ev: xlib::XEvent) {
-    let mut xfd = xlib::XConnectionNumber(xw.dpy);
-    let mut xev = 0;
+    let xfd = xlib::XConnectionNumber(xw.dpy);
+    let mut xev;
     let mut blinkset = 0;
-    let mut dodraw = false;
+    let mut dodraw;
     let mut drawtimeout = new!(libc::timespec);
     let mut tv = 0 as *mut libc::timespec;
     let mut now = new!(libc::timespec);
     let mut last = new!(libc::timespec);
-    let mut lastblink = new!(libc::timespec);
-    let mut deltatime = 0;
+    let mut lastblink;
+    let mut deltatime;
     let mut rfd = mem::zeroed();
 
     clock_gettime(CLOCK_MONOTONIC, &mut last as *mut libc::timespec);
@@ -1281,9 +1268,6 @@ unsafe fn run(mut ev: xlib::XEvent) {
             draw();
             xlib::XFlush(xw.dpy);
 
-            if xev != 0 && !FD_ISSET(xfd, &mut rfd as *mut fd_set) {
-                xev -= 1;
-            }
             if !FD_ISSET(cmdfd, &mut rfd as *mut fd_set) &&
                !FD_ISSET(xfd, &mut rfd as *mut fd_set) {
                 if blinkset != 0 {
