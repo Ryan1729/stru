@@ -38,7 +38,7 @@ extern "C" {
                opt_name: *const c_char)
                -> c_int;
 
-    fn xloadfonts(fontstr: *const c_char, fontsize: c_double);
+    fn xloadfonts(fontstr: *const c_char, fontsize: c_double, pattern: *mut FcPattern);
 
     fn draw();
 
@@ -580,7 +580,22 @@ static mut usedfont: Option<CString> = None;
 
 #[no_mangle]
 pub unsafe extern "C" fn loadfonts(fontsize: c_double) {
-    xloadfonts(to_ptr(usedfont.as_ref()), fontsize);
+    let pattern: *mut FcPattern = if let Some(ref fontstr) = usedfont {
+        let bytes = fontstr.as_bytes_with_nul();
+        if bytes[0] == b'-' {
+            xft::XftXlfdParse(fontstr.as_ptr(), 0, 0) as *mut FcPattern
+        } else {
+            FcNameParse(fontstr.as_ptr() as *mut FcChar8)
+        }
+    } else {
+        ptr::null_mut()
+    };
+
+    if pattern.is_null() {
+        die!("st: can't open font {:?}\n", usedfont);
+    }
+
+    xloadfonts(to_ptr(usedfont.as_ref()), fontsize, pattern);
 }
 
 #[no_mangle]

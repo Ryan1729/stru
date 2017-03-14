@@ -438,7 +438,7 @@ int xloadcolor(int, const char*, Color*);
 static int xsetcolorname(int, const char *);
 static int xgeommasktogravity(int);
 static int xloadfont(Font *, FcPattern *);
-extern void xloadfonts(char *, double);
+extern void xloadfonts(char *, double, FcPattern *);
 void loadfonts(double);
 static void xsettitle(char *);
 static void xresettitle(void);
@@ -3210,20 +3210,10 @@ xloadfont(Font *f, FcPattern *pattern)
 }
 
 void
-xloadfonts(char *fontstr, double fontsize)
+xloadfonts(char *fontstr, double fontsize, FcPattern *pattern)
 {
-	FcPattern *pattern;
 	double fontval;
 	float ceilf(float);
-
-	if (fontstr[0] == '-') {
-		pattern = XftXlfdParse(fontstr, False, False);
-	} else {
-		pattern = FcNameParse((FcChar8 *)fontstr);
-	}
-
-	if (!pattern)
-		die("st: can't open font %s\n", fontstr);
 
 	if (fontsize > 1) {
 		FcPatternDel(pattern, FC_PIXEL_SIZE);
