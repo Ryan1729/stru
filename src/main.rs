@@ -38,7 +38,7 @@ extern "C" {
                opt_name: *const c_char)
                -> c_int;
 
-    fn xloadfonts(fontstr: *const c_char, fontsize: c_double, pattern: *mut FcPattern);
+    fn xloadfont(font: *mut Font, pattern: *mut FcPattern) -> c_int;
 
     fn draw();
 
@@ -109,6 +109,12 @@ macro_rules! die {
             }
             std::process::exit(1);
         }};
+}
+
+macro_rules! die_on_font {
+    ($font : expr) => {
+        die!("stru: can't open font {:?}", $font)
+    }
 }
 
 macro_rules! limit {
@@ -549,6 +555,13 @@ pub struct Term {
 #[no_mangle]
 pub static mut cmdfd: c_int = 0;
 
+#[no_mangle]
+pub static mut usedfontsize: c_double = 0.0;
+
+#[no_mangle]
+pub static mut defaultfontsize: c_double = 0.0;
+
+
 // a88888b.    .8888b
 // d8'   `88    88   "
 // 88           88aaa  88d888b. .d8888b.
@@ -578,6 +591,17 @@ pub unsafe extern "C" fn tfulldirt() {
 
 static mut usedfont: Option<CString> = None;
 
+static mut FC_PIXEL_SIZE: &'static [u8; 10] = b"pixelsize\0";
+static mut FC_SIZE: &'static [u8; 5] = b"size\0";
+
+static mut FC_SLANT: &'static [u8; 6] = b"slant\0";
+const FC_SLANT_ROMAN: c_int = 0;
+const FC_SLANT_ITALIC: c_int = 100;
+const FC_SLANT_OBLIQUE: c_int = 110;
+
+static mut FC_WEIGHT: &'static [u8; 7] = b"weight\0";
+const FC_WEIGHT_BOLD: c_int = 200;
+
 #[no_mangle]
 pub unsafe extern "C" fn loadfonts(fontsize: c_double) {
     let pattern: *mut FcPattern = if let Some(ref fontstr) = usedfont {
@@ -592,10 +616,75 @@ pub unsafe extern "C" fn loadfonts(fontsize: c_double) {
     };
 
     if pattern.is_null() {
-        die!("st: can't open font {:?}\n", usedfont);
+        die_on_font!(usedfont);
     }
 
-    xloadfonts(to_ptr(usedfont.as_ref()), fontsize, pattern);
+    let mut fontval = 0.0;
+
+    if fontsize > 1.0 {
+        FcPatternDel(pattern, FC_PIXEL_SIZE.as_ptr() as *mut _);
+        FcPatternDel(pattern, FC_SIZE.as_ptr() as *mut _);
+        FcPatternAddDouble(pattern, FC_PIXEL_SIZE.as_ptr() as *mut _, fontsize);
+        usedfontsize = fontsize;
+    } else {
+        if FcPatternGetDouble(pattern,
+                              FC_PIXEL_SIZE.as_ptr() as *mut _,
+                              0,
+                              &mut fontval as *mut c_double) == FcResultMatch {
+            usedfontsize = fontval;
+        } else if FcPatternGetDouble(pattern,
+                                     FC_SIZE.as_ptr() as *mut _,
+                                     0,
+                                     &mut fontval as *mut c_double) ==
+                  FcResultMatch {
+            usedfontsize = -1.0;
+        } else {
+            /*
+             * Default font size is 12, if none given. This is to
+             * have a known usedfontsize value.
+             */
+            FcPatternAddDouble(pattern, FC_PIXEL_SIZE.as_ptr() as *mut _, 12.0);
+            usedfontsize = 12.0;
+        }
+        defaultfontsize = usedfontsize;
+    }
+
+    if xloadfont(&mut dc.font as *mut Font, pattern) != 0 {
+        die_on_font!(usedfont);
+    }
+
+    if usedfontsize < 0.0 {
+        FcPatternGetDouble((*dc.font.match_).pattern as *mut FcPattern,
+                           FC_PIXEL_SIZE.as_ptr() as *mut _,
+                           0,
+                           &mut fontval as *mut c_double);
+        usedfontsize = fontval;
+        if fontsize == 0.0 {
+            defaultfontsize = fontval;
+        }
+    }
+
+    /* Setting character width and height. */
+    xw.cw = (dc.font.width as c_float * config::cwscale).ceil() as i32;
+    xw.ch = (dc.font.height as c_float * config::chscale).ceil() as i32;
+
+    FcPatternDel(pattern, FC_SLANT.as_ptr() as *mut _);
+    FcPatternAddInteger(pattern, FC_SLANT.as_ptr() as *mut _, FC_SLANT_ITALIC);
+    if xloadfont(&mut dc.ifont as *mut Font, pattern) != 0 {
+        die_on_font!(usedfont);
+    }
+
+    FcPatternDel(pattern, FC_WEIGHT.as_ptr() as *mut _);
+    FcPatternAddInteger(pattern, FC_WEIGHT.as_ptr() as *mut _, FC_WEIGHT_BOLD);
+    if xloadfont(&mut dc.ibfont as *mut Font, pattern) != 0 {
+        die_on_font!(usedfont);
+    }
+
+    FcPatternDel(pattern, FC_SLANT.as_ptr() as *mut _);
+    FcPatternAddInteger(pattern, FC_SLANT.as_ptr() as *mut _, FC_SLANT_ROMAN);
+    if xloadfont(&mut dc.bfont as *mut Font, pattern) != 0 {
+        die_on_font!(usedfont);
+    }
 }
 
 #[no_mangle]

@@ -88,3 +88,7 @@ pub const defaultbg: c_uint = 0;
 pub const mouseshape : c_int = 152;
 pub const mousefg : c_int = 7;
 pub const mousebg : c_int = 0;
+
+/* Kerning / character bounding-box multipliers */
+pub const cwscale:c_float = 1.0;
+pub const chscale:c_float = 1.0;

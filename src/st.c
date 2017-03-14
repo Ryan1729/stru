@@ -437,8 +437,7 @@ void xloadcols(void);
 int xloadcolor(int, const char*, Color*);
 static int xsetcolorname(int, const char *);
 static int xgeommasktogravity(int);
-static int xloadfont(Font *, FcPattern *);
-extern void xloadfonts(char *, double, FcPattern *);
+int xloadfont(Font *, FcPattern *);
 void loadfonts(double);
 static void xsettitle(char *);
 static void xresettitle(void);
@@ -547,8 +546,8 @@ static char *opt_name  = NULL;
 static char *opt_title = NULL;
 static int oldbutton   = 3; /* button event on startup: 3 = release */
 
-static double usedfontsize = 0;
-static double defaultfontsize = 0;
+extern double usedfontsize;
+extern double defaultfontsize;
 
 static uchar utfbyte[UTF_SIZ + 1] = {0x80,    0, 0xC0, 0xE0, 0xF0};
 static uchar utfmask[UTF_SIZ + 1] = {0xC0, 0x80, 0xE0, 0xF0, 0xF8};
@@ -3207,68 +3206,6 @@ xloadfont(Font *f, FcPattern *pattern)
 	f->width = DIVCEIL(extents.xOff, strlen(ascii_printable));
 
 	return 0;
-}
-
-void
-xloadfonts(char *fontstr, double fontsize, FcPattern *pattern)
-{
-	double fontval;
-	float ceilf(float);
-
-	if (fontsize > 1) {
-		FcPatternDel(pattern, FC_PIXEL_SIZE);
-		FcPatternDel(pattern, FC_SIZE);
-		FcPatternAddDouble(pattern, FC_PIXEL_SIZE, (double)fontsize);
-		usedfontsize = fontsize;
-	} else {
-		if (FcPatternGetDouble(pattern, FC_PIXEL_SIZE, 0, &fontval) ==
-				FcResultMatch) {
-			usedfontsize = fontval;
-		} else if (FcPatternGetDouble(pattern, FC_SIZE, 0, &fontval) ==
-				FcResultMatch) {
-			usedfontsize = -1;
-		} else {
-			/*
-			 * Default font size is 12, if none given. This is to
-			 * have a known usedfontsize value.
-			 */
-			FcPatternAddDouble(pattern, FC_PIXEL_SIZE, 12);
-			usedfontsize = 12;
-		}
-		defaultfontsize = usedfontsize;
-	}
-
-	if (xloadfont(&dc.font, pattern))
-		die("st: can't open font %s\n", fontstr);
-
-	if (usedfontsize < 0) {
-		FcPatternGetDouble(dc.font.match->pattern,
-		                   FC_PIXEL_SIZE, 0, &fontval);
-		usedfontsize = fontval;
-		if (fontsize == 0)
-			defaultfontsize = fontval;
-	}
-
-	/* Setting character width and height. */
-	xw.cw = ceilf(dc.font.width * cwscale);
-	xw.ch = ceilf(dc.font.height * chscale);
-
-	FcPatternDel(pattern, FC_SLANT);
-	FcPatternAddInteger(pattern, FC_SLANT, FC_SLANT_ITALIC);
-	if (xloadfont(&dc.ifont, pattern))
-		die("st: can't open font %s\n", fontstr);
-
-	FcPatternDel(pattern, FC_WEIGHT);
-	FcPatternAddInteger(pattern, FC_WEIGHT, FC_WEIGHT_BOLD);
-	if (xloadfont(&dc.ibfont, pattern))
-		die("st: can't open font %s\n", fontstr);
-
-	FcPatternDel(pattern, FC_SLANT);
-	FcPatternAddInteger(pattern, FC_SLANT, FC_SLANT_ROMAN);
-	if (xloadfont(&dc.bfont, pattern))
-		die("st: can't open font %s\n", fontstr);
-
-	FcPatternDestroy(pattern);
 }
 
 void
