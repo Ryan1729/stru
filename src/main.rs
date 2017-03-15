@@ -850,6 +850,7 @@ pub unsafe extern "C" fn draw() {
     let mut y = 0;
     while y < term.row {
         if *term.dirty.offset(y as isize) == 0 {
+            y += 1;
             continue;
         }
 
