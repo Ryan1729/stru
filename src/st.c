@@ -426,12 +426,12 @@ static void ttywrite(const char *, size_t);
 static void tstrsequence(uchar);
 
 static inline ushort sixd_to_16bit(int);
-static int xmakeglyphfontspecs(XftGlyphFontSpec *, const Glyph *, int, int, int);
-static void xdrawglyphfontspecs(const XftGlyphFontSpec *, Glyph, int, int, int);
+int xmakeglyphfontspecs(XftGlyphFontSpec *, const Glyph *, int, int, int);
+ void xdrawglyphfontspecs(const XftGlyphFontSpec *, Glyph, int, int, int);
 static void xdrawglyph(Glyph, int, int);
 static void xhints(void);
 static void xclear(int, int, int, int);
-static void xdrawcursor(void);
+void xdrawcursor(void);
 static void xinit(void);
 void xloadcols(void);
 int xloadcolor(int, const char*, Color*);
@@ -466,7 +466,7 @@ static void selclear(XEvent *);
 static void selrequest(XEvent *);
 
 static void selnormalize(void);
-static inline int selected(int, int);
+int selected(int, int);
 static char *getsel(void);
 static void selcopy(Time);
 static void selscroll(int, int);
@@ -3672,63 +3672,6 @@ redraw(void)
 {
 	tfulldirt();
 	draw();
-}
-
-void
-draw(void)
-{
-	drawregion(0, 0, term.col, term.row);
-	XCopyArea(xw.dpy, xw.buf, xw.win, dc.gc, 0, 0, xw.w,
-			xw.h, 0, 0);
-	XSetForeground(xw.dpy, dc.gc,
-			dc.col[IS_SET(MODE_REVERSE)?
-				defaultfg : defaultbg].pixel);
-}
-
-void
-drawregion(int x1, int y1, int x2, int y2)
-{
-	int i, x, y, ox, numspecs;
-	Glyph base, new;
-	XftGlyphFontSpec *specs;
-	int ena_sel = sel.ob.x != -1 && sel.alt == IS_SET(MODE_ALTSCREEN);
-
-	if (!(xw.state & WIN_VISIBLE))
-		return;
-
-	for (y = y1; y < y2; y++) {
-		if (!term.dirty[y])
-			continue;
-
-		term.dirty[y] = 0;
-
-		specs = term.specbuf;
-		numspecs = xmakeglyphfontspecs(specs, &TLINE(y)[x1], x2 - x1, x1, y);
-
-		i = ox = 0;
-		for (x = x1; x < x2 && i < numspecs; x++) {
-			new = TLINE(y)[x];
-			if (new.mode == ATTR_WDUMMY)
-				continue;
-			if (ena_sel && selected(x, y))
-				new.mode ^= ATTR_REVERSE;
-			if (i > 0 && ATTRCMP(base, new)) {
-				xdrawglyphfontspecs(specs, base, i, ox, y);
-				specs += i;
-				numspecs -= i;
-				i = 0;
-			}
-			if (i == 0) {
-				ox = x;
-				base = new;
-			}
-			i++;
-		}
-		if (i > 0)
-			xdrawglyphfontspecs(specs, base, i, ox, y);
-	}
-	if (term.scr == 0)
-		xdrawcursor();
 }
 
 void

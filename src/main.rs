@@ -38,9 +38,23 @@ extern "C" {
                opt_name: *const c_char)
                -> c_int;
 
-    fn xloadfont(font: *mut Font, pattern: *mut FcPattern) -> c_int;
+    fn xmakeglyphfontspecs(specs: *mut xft::XftGlyphFontSpec,
+                           glyphs: *const Glyph,
+                           len: c_int,
+                           x: c_int,
+                           y: c_int)
+                           -> c_int;
 
-    fn draw();
+    fn xdrawglyphfontspecs(specs: *mut xft::XftGlyphFontSpec,
+                           base: Glyph,
+                           len: c_int,
+                           x: c_int,
+                           y: c_int);
+
+    fn xloadfont(font: *mut Font, pattern: *mut FcPattern) -> c_int;
+    fn xdrawcursor();
+
+    fn selected(x: c_int, y: c_int) -> c_int;
 
     fn ttynew();
     fn ttyresize();
@@ -137,7 +151,7 @@ macro_rules! time_diff {
 
 macro_rules! is_set_on {
     ( $flag: expr, $field : expr) => {
-        $field & $flag != 0
+        ($field & $flag) != 0
     };
 
     ( $flag: expr, $field : expr, $number_type:ty) => {
@@ -158,6 +172,12 @@ macro_rules! mod_bit {
 macro_rules! is_between {
     ( $x: expr, $min : expr, $max : expr) => {
         $min <= $x && $x <= $max
+    }
+}
+
+macro_rules! attr_cmp {
+    ( $a: expr, $b: expr) => {
+        $a.mode != $b.mode || $a.fg != $b.fg || $a.bg != $b.bg
     }
 }
 
@@ -304,6 +324,14 @@ enum charset {
     CS_FIN = 6,
 }
 use charset::*;
+
+#[allow(dead_code)]
+#[allow(non_camel_case_types)]
+enum window_state {
+    WIN_VISIBLE = 1,
+    WIN_FOCUSED = 2,
+}
+use window_state::*;
 
 static mut CURSOR_STORAGE: [TCursor; 2] = [new!(TCursor), new!(TCursor)];
 
@@ -511,11 +539,11 @@ pub static mut term: Term = Term {
     col: 0,
     line: 0 as *mut *mut Glyph,
     alt: 0 as *mut *mut Glyph,
-    hist: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    hist: [0 as *mut Glyph; config::histsize],
     histi: 0,
     scr: 0,
-    dirty: 0,
-    specbuf: 0,
+    dirty: 0 as *mut c_int,
+    specbuf: 0 as *mut xft::XftGlyphFontSpec,
     c: new!(TCursor),
     top: 0,
     bot: 0,
@@ -535,11 +563,11 @@ pub struct Term {
     col: c_int,
     line: *mut *mut Glyph,
     alt: *mut *mut Glyph,
-    hist: [usize; config::histsize],
+    hist: [*mut Glyph; config::histsize],
     histi: c_int,
     scr: c_int,
-    dirty: usize,
-    specbuf: usize,
+    dirty: *mut c_int,
+    specbuf: *mut xft::XftGlyphFontSpec,
     c: TCursor,
     top: c_int,
     bot: c_int,
@@ -597,7 +625,6 @@ static mut FC_SIZE: &'static [u8; 5] = b"size\0";
 static mut FC_SLANT: &'static [u8; 6] = b"slant\0";
 const FC_SLANT_ROMAN: c_int = 0;
 const FC_SLANT_ITALIC: c_int = 100;
-const FC_SLANT_OBLIQUE: c_int = 110;
 
 static mut FC_WEIGHT: &'static [u8; 7] = b"weight\0";
 const FC_WEIGHT_BOLD: c_int = 200;
@@ -808,6 +835,73 @@ pub unsafe extern "C" fn xloadcols() {
     loaded = true;
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn draw() {
+    let mut base: Glyph = mem::zeroed::<Glyph>();
+    let mut new: Glyph;
+    let ena_sel = sel.ob.x != -1 && (sel.alt != 0) == is_set_on!(MODE_ALTSCREEN as i32, term.mode);
+
+    if (xw.state & WIN_VISIBLE as c_char) == 0 {
+        return;
+    }
+
+    let mut specs: *mut xft::XftGlyphFontSpec;
+    let mut numspecs;
+    let mut y = 0;
+    while y < term.row {
+        if *term.dirty.offset(y as isize) == 0 {
+            continue;
+        }
+
+        *term.dirty.offset(y as isize) = 0;
+
+        specs = term.specbuf;
+        numspecs = xmakeglyphfontspecs(specs, term_line(y), term.col - 0, 0, y);
+
+        let mut i = 0;
+        let mut ox = 0;
+        let mut x = 0;
+        while x < term.col && i < numspecs {
+            new = *(term_line(y).offset(x as isize));
+            if new.mode == ATTR_WDUMMY as u16 {
+                continue;
+            }
+            if ena_sel && selected(x, y) != 0 {
+                new.mode ^= ATTR_REVERSE as u16;
+            }
+            if i > 0 && attr_cmp!(base, new) {
+                xdrawglyphfontspecs(specs, base, i, ox, y);
+                specs = specs.offset(i as isize);
+                numspecs -= i;
+                i = 0;
+            }
+            if i == 0 {
+                ox = x;
+                base = new;
+            }
+            i += 1;
+            x += 1;
+        }
+        if i > 0 {
+            xdrawglyphfontspecs(specs, base, i, ox, y);
+        }
+        y += 1;
+    }
+
+    if term.scr == 0 {
+        xdrawcursor();
+    }
+
+    xlib::XCopyArea(xw.dpy, xw.buf, xw.win, dc.gc, 0, 0, xw.w, xw.h, 0, 0);
+    xlib::XSetForeground(xw.dpy,
+                         dc.gc,
+                         dc.col[if is_set_on!(MODE_REVERSE as i32, term.mode) {
+                                 config::defaultfg
+                             } else {
+                                 config::defaultbg
+                             } as usize]
+                             .pixel);
+}
 
 //  a88888b.                   .8888b oo
 // d8'   `88                   88   "
@@ -868,6 +962,20 @@ pub static mut colourname: Option<Vec<*const c_char>> = None;
 
 fn basename(path: &str) -> &str {
     path.rsplitn(2, "/").next().unwrap_or(path)
+}
+
+unsafe fn term_line(y: c_int) -> *mut Glyph {
+    if y < term.scr {
+        let index = ((y as usize + (term.histi - term.scr) as usize +
+                      config::histsize + 1) as usize % config::histsize) as
+                    usize;
+
+        term.hist[index]
+
+    } else {
+        *term.line.offset((y - term.scr) as isize)
+    }
+
 }
 
 fn usage(exe_path: &str) {
@@ -1108,6 +1216,20 @@ unsafe fn xinit(opt_embed: Option<String>) {
 
 }
 
+
+unsafe fn selinit() {
+    libc::clock_gettime(CLOCK_MONOTONIC, &mut sel.tclick1 as *mut libc::timespec);
+    libc::clock_gettime(CLOCK_MONOTONIC, &mut sel.tclick2 as *mut libc::timespec);
+    sel.mode = SEL_IDLE as c_int;
+    sel.snap = 0;
+    sel.ob.x = -1;
+    sel.xtarget = xlib::XInternAtom(xw.dpy, CString::new("UTF8_STRING").unwrap().as_ptr(), 0);
+
+    if sel.xtarget == 0 {
+        sel.xtarget = xlib::XA_STRING;
+    }
+}
+
 fn main() {
     let mut args: Vec<String> = std::env::args().collect::<Vec<String>>();
 
@@ -1276,7 +1398,6 @@ and can be found at st.suckless.org\n",
     std::process::exit(0);
 }
 
-
 unsafe fn tsetdirtattr(attr: c_int) {
 
     for i in 0..((term.row - 1) as isize) {
@@ -1302,7 +1423,6 @@ unsafe fn run(mut ev: xlib::XEvent) {
     let mut now = new!(libc::timespec);
     let mut last = new!(libc::timespec);
     let mut lastblink;
-    let mut deltatime;
     let mut rfd = mem::zeroed();
 
     clock_gettime(CLOCK_MONOTONIC, &mut last as *mut libc::timespec);
@@ -1354,8 +1474,8 @@ unsafe fn run(mut ev: xlib::XEvent) {
             lastblink = now;
             dodraw = true;
         }
-        deltatime = time_diff!(now, last);
-        if deltatime > 1000 / (if xev != 0 { xfps } else { actionfps as c_long }) {
+
+        if time_diff!(now, last) > 1000 / (if xev != 0 { xfps } else { actionfps as c_long }) {
             dodraw = true;
             last = now;
         }
@@ -1390,20 +1510,6 @@ unsafe fn run(mut ev: xlib::XEvent) {
         }
     }
 }
-
-unsafe fn selinit() {
-    libc::clock_gettime(CLOCK_MONOTONIC, &mut sel.tclick1 as *mut libc::timespec);
-    libc::clock_gettime(CLOCK_MONOTONIC, &mut sel.tclick2 as *mut libc::timespec);
-    sel.mode = SEL_IDLE as c_int;
-    sel.snap = 0;
-    sel.ob.x = -1;
-    sel.xtarget = xlib::XInternAtom(xw.dpy, CString::new("UTF8_STRING").unwrap().as_ptr(), 0);
-
-    if sel.xtarget == 0 {
-        sel.xtarget = xlib::XA_STRING;
-    }
-}
-
 
 fn to_ptr(possible_arg: Option<&CString>) -> *const c_char {
     match possible_arg {
