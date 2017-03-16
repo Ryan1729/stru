@@ -33,6 +33,11 @@ pub const tabspaces: c_uint = 8;
  * 7: Snowman ("☃")
  */
 pub const cursorshape: c_int = 2;
+/*
+ * thickness of underline and bar cursors
+ */
+pub const cursorthickness: c_uint = 2;
+
 pub const defaultfont: &'static str = "Liberation Mono:pixelsize=16:antialias=true:autohint=true";
 pub const borderpx: c_int = 2;
 

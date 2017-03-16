@@ -431,7 +431,6 @@ int xmakeglyphfontspecs(XftGlyphFontSpec *, const Glyph *, int, int, int);
 static void xdrawglyph(Glyph, int, int);
 static void xhints(void);
 static void xclear(int, int, int, int);
-void xdrawcursor(void);
 static void xinit(void);
 void xloadcols(void);
 int xloadcolor(int, const char*, Color*);
@@ -476,7 +475,7 @@ static int y2row(int);
 static void getbuttoninfo(XEvent *);
 static void mousereport(XEvent *);
 
-static size_t utf8decode(char *, Rune *, size_t);
+size_t utf8decode(char *, Rune *, size_t);
 static Rune utf8decodebyte(char, size_t *);
 static size_t utf8encode(Rune, char *);
 static char utf8encodebyte(Rune, size_t);
@@ -3535,119 +3534,6 @@ xdrawglyphfontspecs(const XftGlyphFontSpec *specs, Glyph base, int len, int x, i
 	/* Reset clip to none. */
 	XftDrawSetClip(xw.draw, 0);
 }
-
-void
-xdrawglyph(Glyph g, int x, int y)
-{
-	int numspecs;
-	XftGlyphFontSpec spec;
-
-	numspecs = xmakeglyphfontspecs(&spec, &g, 1, x, y);
-	xdrawglyphfontspecs(&spec, g, numspecs, x, y);
-}
-
-void
-xdrawcursor(void)
-{
-	static int oldx = 0, oldy = 0;
-	int curx;
-	Glyph g = {' ', ATTR_NULL, defaultbg, defaultcs}, og;
-	int ena_sel = sel.ob.x != -1 && sel.alt == IS_SET(MODE_ALTSCREEN);
-	Color drawcol;
-
-	LIMIT(oldx, 0, term.col-1);
-	LIMIT(oldy, 0, term.row-1);
-
-	curx = term.c.x;
-
-	/* adjust position if in dummy */
-	if (term.line[oldy][oldx].mode & ATTR_WDUMMY)
-		oldx--;
-	if (term.line[term.c.y][curx].mode & ATTR_WDUMMY)
-		curx--;
-
-	/* remove the old cursor */
-	og = term.line[oldy][oldx];
-	if (ena_sel && selected(oldx, oldy))
-		og.mode ^= ATTR_REVERSE;
-	xdrawglyph(og, oldx, oldy);
-
-	g.u = term.line[term.c.y][term.c.x].u;
-
-	/*
-	 * Select the right color for the right mode.
-	 */
-	if (IS_SET(MODE_REVERSE)) {
-		g.mode |= ATTR_REVERSE;
-		g.bg = defaultfg;
-		if (ena_sel && selected(term.c.x, term.c.y)) {
-			drawcol = dc.col[defaultcs];
-			g.fg = defaultrcs;
-		} else {
-			drawcol = dc.col[defaultrcs];
-			g.fg = defaultcs;
-		}
-	} else {
-		if (ena_sel && selected(term.c.x, term.c.y)) {
-			drawcol = dc.col[defaultrcs];
-			g.fg = defaultfg;
-			g.bg = defaultrcs;
-		} else {
-			drawcol = dc.col[defaultcs];
-		}
-	}
-
-	if (IS_SET(MODE_HIDE))
-		return;
-
-	/* draw the new one */
-	if (xw.state & WIN_FOCUSED) {
-		switch (xw.cursor) {
-		case 7: /* st extension: snowman */
-			utf8decode("☃", &g.u, UTF_SIZ);
-		case 0: /* Blinking Block */
-		case 1: /* Blinking Block (Default) */
-		case 2: /* Steady Block */
-			g.mode |= term.line[term.c.y][curx].mode & ATTR_WIDE;
-			xdrawglyph(g, term.c.x, term.c.y);
-			break;
-		case 3: /* Blinking Underline */
-		case 4: /* Steady Underline */
-			XftDrawRect(xw.draw, &drawcol,
-					borderpx + curx * xw.cw,
-					borderpx + (term.c.y + 1) * xw.ch - \
-						cursorthickness,
-					xw.cw, cursorthickness);
-			break;
-		case 5: /* Blinking bar */
-		case 6: /* Steady bar */
-			XftDrawRect(xw.draw, &drawcol,
-					borderpx + curx * xw.cw,
-					borderpx + term.c.y * xw.ch,
-					cursorthickness, xw.ch);
-			break;
-		}
-	} else {
-		XftDrawRect(xw.draw, &drawcol,
-				borderpx + curx * xw.cw,
-				borderpx + term.c.y * xw.ch,
-				xw.cw - 1, 1);
-		XftDrawRect(xw.draw, &drawcol,
-				borderpx + curx * xw.cw,
-				borderpx + term.c.y * xw.ch,
-				1, xw.ch - 1);
-		XftDrawRect(xw.draw, &drawcol,
-				borderpx + (curx + 1) * xw.cw - 1,
-				borderpx + term.c.y * xw.ch,
-				1, xw.ch - 1);
-		XftDrawRect(xw.draw, &drawcol,
-				borderpx + curx * xw.cw,
-				borderpx + (term.c.y + 1) * xw.ch - 1,
-				xw.cw, 1);
-	}
-	oldx = curx, oldy = term.c.y;
-}
-
 
 void
 xsettitle(char *p)

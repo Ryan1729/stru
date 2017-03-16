@@ -52,7 +52,6 @@ extern "C" {
                            y: c_int);
 
     fn xloadfont(font: *mut Font, pattern: *mut FcPattern) -> c_int;
-    fn xdrawcursor();
 
     fn selected(x: c_int, y: c_int) -> c_int;
 
@@ -67,7 +66,33 @@ extern "C" {
     fn cresize(width: c_int, height: c_int);
 
     fn call_handler(ev: xlib::XEvent);
+
+    fn utf8decode(c: *mut c_char, u: *mut Rune, clen: size_t) -> size_t;
 }
+
+//  a88888b.                              dP
+// d8'   `88                              88
+// 88        .d8888b. 88d888b. .d8888b. d8888P .d8888b.
+// 88        88'  `88 88'  `88 Y8ooooo.   88   Y8ooooo.
+// Y8.   .88 88.  .88 88    88       88   88         88
+//  Y88888P' `88888P' dP    dP `88888P'   dP   `88888P'
+
+/*
+ * Bitmask returned by XParseGeometry().  Each bit tells if the corresponding
+ * value (x, y, width, height) was found in the parsed string.
+ */
+// const NoValue: c_int = 0x0000;
+// const XValue: c_int = 0x0001;
+// const YValue: c_int = 0x0002;
+// const WidthValue: c_int = 0x0004;
+// const HeightValue: c_int = 0x0008;
+// const AllValues: c_int = 0x000F;
+const XNegative: c_int = 0x0010;
+const YNegative: c_int = 0x0020;
+
+/* Arbitrary sizes */
+const UTF_INVALID: c_int = 0xFFFD;
+const UTF_SIZ: usize = 4;
 
 // 8888ba.88ba
 // 88  `8b  `8b
@@ -835,11 +860,15 @@ pub unsafe extern "C" fn xloadcols() {
     loaded = true;
 }
 
+unsafe fn get_ena_sel() -> bool {
+    sel.ob.x != -1 && (sel.alt != 0) == is_set_on!(MODE_ALTSCREEN as i32, term.mode)
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn draw() {
     let mut base: Glyph = mem::zeroed::<Glyph>();
     let mut new: Glyph;
-    let ena_sel = sel.ob.x != -1 && (sel.alt != 0) == is_set_on!(MODE_ALTSCREEN as i32, term.mode);
+    let ena_sel = get_ena_sel();
 
     if (xw.state & WIN_VISIBLE as c_char) == 0 {
         return;
@@ -896,12 +925,151 @@ pub unsafe extern "C" fn draw() {
     xlib::XCopyArea(xw.dpy, xw.buf, xw.win, dc.gc, 0, 0, xw.w, xw.h, 0, 0);
     xlib::XSetForeground(xw.dpy,
                          dc.gc,
-                         dc.col[if is_set_on!(MODE_REVERSE as i32, term.mode) {
+                         dc.col[if is_set_on!(MODE_REVERSE, term.mode, c_int) {
                                  config::defaultfg
                              } else {
                                  config::defaultbg
                              } as usize]
                              .pixel);
+}
+
+
+unsafe fn xdrawglyph(g: Glyph, x: c_int, y: c_int) {
+    let mut spec = mem::zeroed::<xft::XftGlyphFontSpec>();
+
+    let numspecs = xmakeglyphfontspecs(&mut spec as *mut xft::XftGlyphFontSpec,
+                                       &g as *const Glyph,
+                                       1,
+                                       x,
+                                       y);
+    xdrawglyphfontspecs(&mut spec as *mut xft::XftGlyphFontSpec, g, numspecs, x, y);
+}
+
+static mut oldx: c_int = 0;
+static mut oldy: c_int = 0;
+unsafe fn xdrawcursor() {
+    let mut g = Glyph {
+        u: b' ' as uint32_t, /* character code */
+        mode: ATTR_NULL as c_ushort, /* attribute flags */
+        fg: config::defaultbg, /* foreground  */
+        bg: defaultcs, /* background  */
+    };
+    let ena_sel = get_ena_sel();
+
+    limit!(oldx, 0, term.col - 1);
+    limit!(oldy, 0, term.row - 1);
+
+    let mut curx = term.c.x;
+
+    /* adjust position if in dummy */
+    if is_set_on!(ATTR_WDUMMY, term_glyph(oldx, oldy).mode, c_ushort) {
+        oldx -= 1;
+    }
+    if is_set_on!(ATTR_WDUMMY, term_glyph(curx, term.c.y).mode, c_ushort) {
+        curx -= 1;
+    }
+
+
+    /* remove the old cursor */
+    let mut og: Glyph = term_glyph(oldx, oldy);
+    if ena_sel && selected(oldx, oldy) != 0 {
+        og.mode ^= ATTR_REVERSE as c_ushort;
+    }
+    xdrawglyph(og, oldx, oldy);
+
+    g.u = term_glyph(term.c.x, term.c.y).u;
+
+    /*
+     * Select the right color for the right mode.
+     */
+    let drawcol: Color;
+    if is_set_on!(MODE_REVERSE, term.mode, c_int) {
+        g.mode |= ATTR_REVERSE as c_ushort;
+        g.bg = config::defaultfg;
+        if ena_sel && selected(term.c.x, term.c.y) != 0 {
+            drawcol = dc.col[defaultcs as usize];
+            g.fg = defaultrcs;
+        } else {
+            drawcol = dc.col[defaultrcs as usize];
+            g.fg = defaultcs;
+        }
+    } else if ena_sel && selected(term.c.x, term.c.y) != 0 {
+        drawcol = dc.col[defaultrcs as usize];
+        g.fg = config::defaultfg;
+        g.bg = defaultrcs;
+    } else {
+        drawcol = dc.col[defaultcs as usize];
+    }
+
+
+    if is_set_on!(MODE_HIDE, term.mode, c_int) {
+        return;
+    }
+
+    /* draw the new one */
+    if is_set_on!(WIN_FOCUSED, xw.state, c_char) {
+        if xw.cursor == 7 {
+            /* st extension: snowman */
+            utf8decode(CString::new("☃").unwrap().as_ptr() as *mut c_char,
+                       &mut g.u as *mut Rune,
+                       UTF_SIZ);
+        }
+
+        match xw.cursor {
+		 7
+         | 0 /* Blinking Block */
+		 | 1 /* Blinking Block (Default) */
+		 | 2 /* Steady Block */
+	      => {
+              g.mode |= term_glyph(curx, term.c.y).mode & ATTR_WIDE as c_ushort;
+			xdrawglyph(g, term.c.x, term.c.y);
+        },
+		3 /* Blinking Underline */
+		| 4 /* Steady Underline */
+		=>	{xft::XftDrawRect(xw.draw, &drawcol as *const Color,
+					config::borderpx + curx * xw.cw,
+					(config::borderpx + (term.c.y + 1) * xw.ch) - config::cursorthickness as c_int,
+					xw.cw as c_uint, config::cursorthickness);
+			},
+		5 /* Blinking bar */
+		| 6 /* Steady bar */
+        => {
+			xft::XftDrawRect(xw.draw, &drawcol as *const Color,
+					config::borderpx + curx * xw.cw,
+					config::borderpx + term.c.y * xw.ch,
+					config::cursorthickness, xw.ch as c_uint);
+			},
+
+            _ => {}
+		}
+    } else {
+        xft::XftDrawRect(xw.draw,
+                         &drawcol as *const Color,
+                         config::borderpx + curx * xw.cw,
+                         config::borderpx + term.c.y * xw.ch,
+                         (xw.cw - 1) as c_uint,
+                         1);
+        xft::XftDrawRect(xw.draw,
+                         &drawcol as *const Color,
+                         config::borderpx + curx * xw.cw,
+                         config::borderpx + term.c.y * xw.ch,
+                         1,
+                         (xw.ch - 1) as c_uint);
+        xft::XftDrawRect(xw.draw,
+                         &drawcol as *const Color,
+                         config::borderpx + (curx + 1) * xw.cw - 1,
+                         config::borderpx + term.c.y * xw.ch,
+                         1,
+                         (xw.ch - 1) as c_uint);
+        xft::XftDrawRect(xw.draw,
+                         &drawcol as *const Color,
+                         config::borderpx + curx * xw.cw,
+                         config::borderpx + (term.c.y + 1) * xw.ch - 1,
+                         xw.cw as c_uint,
+                         1);
+    }
+    oldx = curx;
+    oldy = term.c.y;
 }
 
 //  a88888b.                   .8888b oo
@@ -978,6 +1146,9 @@ unsafe fn term_line(y: c_int) -> *mut Glyph {
     }
 
 }
+unsafe fn term_glyph(x: c_int, y: c_int) -> Glyph {
+    *(*term.line.offset(y as isize).offset(x as isize))
+}
 
 fn usage(exe_path: &str) {
     die!("usage:  {} [-aiv] [-c class] [-f font] [-g geometry] [-n name] [-o file]\n
@@ -1012,19 +1183,6 @@ fn get_colourname(i: c_int) -> Option<&'static str> {
         None
     }
 }
-
-/*
- * Bitmask returned by XParseGeometry().  Each bit tells if the corresponding
- * value (x, y, width, height) was found in the parsed string.
- */
-// const NoValue: c_int = 0x0000;
-// const XValue: c_int = 0x0001;
-// const YValue: c_int = 0x0002;
-// const WidthValue: c_int = 0x0004;
-// const HeightValue: c_int = 0x0008;
-// const AllValues: c_int = 0x000F;
-const XNegative: c_int = 0x0010;
-const YNegative: c_int = 0x0020;
 
 unsafe fn xinit(opt_embed: Option<String>) {
     xw.dpy = xlib::XOpenDisplay(ptr::null());
