@@ -1147,7 +1147,9 @@ unsafe fn term_line(y: c_int) -> *mut Glyph {
 
 }
 unsafe fn term_glyph(x: c_int, y: c_int) -> Glyph {
-    *(*term.line.offset(y as isize).offset(x as isize))
+    let line = *term.line.offset(y as isize);
+
+    *(line.offset(x as isize))
 }
 
 fn usage(exe_path: &str) {
