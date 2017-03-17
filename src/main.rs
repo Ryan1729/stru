@@ -65,9 +65,22 @@ extern "C" {
 
     fn cresize(width: c_int, height: c_int);
 
-    fn call_handler(ev: xlib::XEvent);
-
     fn utf8decode(c: *mut c_char, u: *mut Rune, clen: size_t) -> size_t;
+
+    fn kpress(ev: *const xlib::XEvent);
+    fn cmessage(ev: *const xlib::XEvent);
+    fn resize(ev: *const xlib::XEvent);
+    fn visibility(ev: *const xlib::XEvent);
+    fn unmap(ev: *const xlib::XEvent);
+    fn expose(ev: *const xlib::XEvent);
+    fn focus(ev: *const xlib::XEvent);
+    fn bmotion(ev: *const xlib::XEvent);
+    fn bpress(ev: *const xlib::XEvent);
+    fn brelease(ev: *const xlib::XEvent);
+    fn selclear(ev: *const xlib::XEvent);
+    fn selnotify(ev: *const xlib::XEvent);
+    fn propnotify(ev: *const xlib::XEvent);
+    fn selrequest(ev: *const xlib::XEvent);
 }
 
 //  a88888b.                              dP
@@ -1670,6 +1683,65 @@ unsafe fn run(mut ev: xlib::XEvent) {
             }
         }
     }
+}
+
+unsafe fn call_handler(ev: xlib::XEvent) {
+    match ev.get_type() {
+        xlib::KeyPress => {
+            kpress(&ev as *const xlib::XEvent);
+        }
+        xlib::ClientMessage => {
+            cmessage(&ev as *const xlib::XEvent);
+        }
+        xlib::ConfigureNotify => {
+            resize(&ev as *const xlib::XEvent);
+        }
+        xlib::VisibilityNotify => {
+            visibility(&ev as *const xlib::XEvent);
+        }
+        xlib::UnmapNotify => {
+            unmap(&ev as *const xlib::XEvent);
+        }
+        xlib::Expose => {
+            expose(&ev as *const xlib::XEvent);
+        }
+        xlib::FocusIn => {
+            focus(&ev as *const xlib::XEvent);
+        }
+        xlib::FocusOut => {
+            focus(&ev as *const xlib::XEvent);
+        }
+        xlib::MotionNotify => {
+            bmotion(&ev as *const xlib::XEvent);
+        }
+        xlib::ButtonPress => {
+            bpress(&ev as *const xlib::XEvent);
+        }
+        xlib::ButtonRelease => {
+            brelease(&ev as *const xlib::XEvent);
+        }
+        /*
+         * Uncomment if you want the selection to disappear when you select something
+         * different in another window.
+         */
+        // xlib::SelectionClear => { selclear(&ev as *const xlib::XEvent);},
+        xlib::SelectionNotify => {
+            selnotify(&ev as *const xlib::XEvent);
+        }
+        /*
+         * PropertyNotify is only turned on when there is some INCR transfer happening
+         * for the selection retrieval.
+         */
+        xlib::PropertyNotify => {
+            propnotify(&ev as *const xlib::XEvent);
+        }
+        xlib::SelectionRequest => {
+            selrequest(&ev as *const xlib::XEvent);
+        }
+        _ => {}
+
+    }
+
 }
 
 fn to_ptr(possible_arg: Option<&CString>) -> *const c_char {

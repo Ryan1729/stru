@@ -447,22 +447,22 @@ static void xunloadfont(Font *);
 static void xunloadfonts(void);
 static void xresize(int, int);
 
-static void expose(XEvent *);
-static void visibility(XEvent *);
-static void unmap(XEvent *);
+void expose(XEvent *);
+void visibility(XEvent *);
+void unmap(XEvent *);
 static char *kmap(KeySym, uint);
-static void kpress(XEvent *);
-static void cmessage(XEvent *);
+void kpress(XEvent *);
+void cmessage(XEvent *);
 void cresize(int, int);
-static void resize(XEvent *);
-static void focus(XEvent *);
-static void brelease(XEvent *);
-static void bpress(XEvent *);
-static void bmotion(XEvent *);
-static void propnotify(XEvent *);
-static void selnotify(XEvent *);
-static void selclear(XEvent *);
-static void selrequest(XEvent *);
+void resize(XEvent *);
+void focus(XEvent *);
+void brelease(XEvent *);
+void bpress(XEvent *);
+void bmotion(XEvent *);
+void propnotify(XEvent *);
+void selnotify(XEvent *);
+void selclear(XEvent *);
+void selrequest(XEvent *);
 
 static void selnormalize(void);
 int selected(int, int);
@@ -494,37 +494,6 @@ extern void tsavecursor(void);
 extern void tloadcursor(void);
 
 
-
-
-
-void call_handler(XEvent);
-
-
-static void (*handler[LASTEvent])(XEvent *) = {
-	[KeyPress] = kpress,
-	[ClientMessage] = cmessage,
-	[ConfigureNotify] = resize,
-	[VisibilityNotify] = visibility,
-	[UnmapNotify] = unmap,
-	[Expose] = expose,
-	[FocusIn] = focus,
-	[FocusOut] = focus,
-	[MotionNotify] = bmotion,
-	[ButtonPress] = bpress,
-	[ButtonRelease] = brelease,
-/*
- * Uncomment if you want the selection to disappear when you select something
- * different in another window.
- */
-/*	[SelectionClear] = selclear, */
-	[SelectionNotify] = selnotify,
-/*
- * PropertyNotify is only turned on when there is some INCR transfer happening
- * for the selection retrieval.
- */
-	[PropertyNotify] = propnotify,
-	[SelectionRequest] = selrequest,
-};
 
 /* Globals */
 extern DC dc;
@@ -3765,12 +3734,6 @@ resize(XEvent *e)
 
 	cresize(e->xconfigure.width, e->xconfigure.height);
 	ttyresize();
-}
-
-void call_handler(XEvent ev) {
-  if (handler[ev.type]) {
-        (handler[ev.type])(&ev);
-    }
 }
 
 void
