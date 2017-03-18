@@ -31,21 +31,21 @@ use xlib::ControlMask;
 //returns true if consuming the keyboard event
 fn handle_shortcut(ksym: xlib::KeySym, state: c_uint) -> bool {
     for shortcut in shortcuts.iter() {
-        if ksym == shortcut.key_sym && key_match(shortcut.key_mod, state) {
-            // match shortcut.call {
-            //     Int(func, arg) => {
-            //         func(arg);
-            //     }
-            //     UInt(func, arg) => {
-            //         func(arg);
-            //     }
-            //     Float(func, arg) => {
-            //         func(arg);
-            //     }
-            //     NoArg(func) => {
-            //         func();
-            //     }
-            // }
+        if ksym == (shortcut.key_sym as u64) && key_match(shortcut.key_mod, state) {
+            match shortcut.call {
+                Int(func, arg) => {
+                    func(arg);
+                }
+                UInt(func, arg) => {
+                    func(arg);
+                }
+                Float(func, arg) => {
+                    func(arg);
+                }
+                NoArg(func) => {
+                    func();
+                }
+            }
 
             return true;
         }
@@ -55,42 +55,98 @@ fn handle_shortcut(ksym: xlib::KeySym, state: c_uint) -> bool {
 }
 /* Internal keyboard shortcuts. */
 const MODKEY: c_uint = xlib::Mod1Mask;
-const XK_ANY_MOD: c_uint = 0xFFFFFFFF; //<c_uint>::max_value();
+const XK_ANY_MOD: c_uint = 0xFFFFFFFF;
 
-// static shortcuts: [Shortcut;14] = [
-static shortcuts: [Shortcut; 0] = [
+static shortcuts: [Shortcut;14] = [
 	/* mask                 keysym          function        argument */
-	// Shortcut { key_mod: XK_ANY_MOD,    key_sym: XK_Break,call: NoArg(&sendbreak)},
-	// Shortcut { key_mod: ControlMask,key_sym: XK_Print,call: NoArg(&toggleprinter)},
-	// Shortcut { key_mod: ShiftMask,  key_sym: XK_Print,call: NoArg(&printscreen)},
-	// Shortcut { key_mod: XK_ANY_MOD, key_sym: XK_Print,call: NoArg(&printsel)},
-	// Shortcut { key_mod: MODKEY|ShiftMask,key_sym: XK_Prior,call: Float(&xzoom, 1 )},
-	// Shortcut { key_mod: MODKEY|ShiftMask,key_sym: XK_Next, call: Float(&xzoom, -1 )},
-	// Shortcut { key_mod: MODKEY|ShiftMask,key_sym: XK_Home, call: Float(&xzoomreset,  0 )},
-	// Shortcut { key_mod: ShiftMask,  key_sym: XK_Insert, call: NoArg(&selpaste)},
-	// Shortcut { key_mod: ControlMask|ShiftMask,key_sym: XK_Insert, call: NoArg(&clippaste)},
-	// Shortcut { key_mod: ControlMask|ShiftMask,key_sym: XK_C, call: NoArg(&clipcopy)},
-	// Shortcut { key_mod: ControlMask|ShiftMask,key_sym: XK_V, call: NoArg(&clippaste)},
-	// Shortcut { key_mod: MODKEY,     key_sym: XK_Num_Lock,    call: NoArg(&numlock)},
-	// Shortcut { key_mod: ShiftMask,  key_sym: XK_Page_Up,     call: Int(&kscrollup, -1)},
-	// Shortcut { key_mod: ShiftMask,  key_sym: XK_Page_Down,   call: Int(&kscrolldown, -1)},
+	Shortcut { key_mod: XK_ANY_MOD,    key_sym: XK_Break,call: NoArg(sendbreak)},
+	Shortcut { key_mod: ControlMask,key_sym: XK_Print,call: NoArg(toggleprinter)},
+	Shortcut { key_mod: ShiftMask,  key_sym: XK_Print,call: NoArg(printscreen)},
+	Shortcut { key_mod: XK_ANY_MOD, key_sym: XK_Print,call: NoArg(printsel)},
+	Shortcut { key_mod: MODKEY|ShiftMask,key_sym: XK_Prior,call: Float(xzoom, 1.0 )},
+	Shortcut { key_mod: MODKEY|ShiftMask,key_sym: XK_Next, call: Float(xzoom, -1.0 )},
+	Shortcut { key_mod: MODKEY|ShiftMask,key_sym: XK_Home, call: NoArg(xzoomreset)},
+	Shortcut { key_mod: ShiftMask,  key_sym: XK_Insert, call: NoArg(selpaste)},
+	Shortcut { key_mod: ControlMask|ShiftMask,key_sym: XK_Insert, call: NoArg(clippaste)},
+	Shortcut { key_mod: ControlMask|ShiftMask,key_sym: XK_C, call: NoArg(clipcopy)},
+	Shortcut { key_mod: ControlMask|ShiftMask,key_sym: XK_V, call: NoArg(clippaste)},
+	Shortcut { key_mod: MODKEY,     key_sym: XK_Num_Lock,    call: NoArg(numlock)},
+	Shortcut { key_mod: ShiftMask,  key_sym: XK_Page_Up,     call: Int(kscrollup, -1)},
+	Shortcut { key_mod: ShiftMask,  key_sym: XK_Page_Down,   call: Int(kscrolldown, -1)},
 ];
 
-//TODO can we do this in a way that doesn't require the extra indirection that
-//trait ocjects imply?
+fn sendbreak() {
+    unsafe {
+        c_sendbreak(0 as *const c_void);
+    }
+}
+fn toggleprinter() {
+    unsafe {
+        c_toggleprinter(0 as *const c_void);
+    }
+}
+fn printscreen() {
+    unsafe {
+        c_printscreen(0 as *const c_void);
+    }
+}
+fn printsel() {
+    unsafe {
+        c_printsel(0 as *const c_void);
+    }
+}
+fn xzoom(f: c_float) {
+    unsafe {
+        c_xzoom(f);
+    }
+}
+fn xzoomreset() {
+    unsafe {
+        c_xzoomreset(0 as *const c_void);
+    }
+}
+fn selpaste() {
+    unsafe {
+        c_selpaste(0 as *const c_void);
+    }
+}
+fn clippaste() {
+    unsafe {
+        c_clippaste(0 as *const c_void);
+    }
+}
+fn clipcopy() {
+    unsafe {
+        c_clipcopy(0 as *const c_void);
+    }
+}
+fn numlock() {
+    unsafe {
+        c_numlock(0 as *const c_void);
+    }
+}
+fn kscrollup(n: c_int) {
+    unsafe {
+        c_kscrollup(n);
+    }
+}
+fn kscrolldown(n : c_int) {
+    unsafe {
+        c_kscrolldown(n);
+    }
+}
 
 enum Call {
-    // Int(&'static Fn(c_int), c_int),
-    // UInt(&'static Fn(c_uint), c_uint),
-    // Float(&'static Fn(c_float), c_float),
-    // NoArg(&'static Fn()),
-    DeleteThisLater,
+    Int(fn(c_int), c_int),
+    UInt(fn(c_uint), c_uint),
+    Float(fn(c_float), c_float),
+    NoArg(fn()),
 }
 use Call::*;
 
 struct Shortcut {
     key_mod: c_uint,
-    key_sym: xlib::KeySym,
+    key_sym: c_uint,
     call: Call,
 }
 
@@ -157,18 +213,18 @@ extern "C" {
     fn propnotify(ev: *const xlib::XEvent);
     fn selrequest(ev: *const xlib::XEvent);
 
-    fn c_sendbreak(arg: *const u32);
-    fn c_toggleprinter(arg: *const u32);
-    fn c_printscreen(arg: *const u32);
-    fn c_printsel(arg: *const u32);
-    fn c_xzoom(arg: *const u32);
-    fn c_xzoomreset(arg: *const u32);
-    fn c_selpaste(arg: *const u32);
-    fn c_clippaste(arg: *const u32);
-    fn c_clipcopy(arg: *const u32);
-    fn c_numlock(arg: *const u32);
-    fn c_kscrollup(arg: *const u32);
-    fn c_kscrolldown(arg: *const u32);
+    fn c_sendbreak(arg: *const c_void);
+    fn c_toggleprinter(arg: *const c_void);
+    fn c_printscreen(arg: *const c_void);
+    fn c_printsel(arg: *const c_void);
+    fn c_xzoom(f: c_float);
+    fn c_xzoomreset(arg: *const c_void);
+    fn c_selpaste(arg: *const c_void);
+    fn c_clippaste(arg: *const c_void);
+    fn c_clipcopy(arg: *const c_void);
+    fn c_numlock(arg: *const c_void);
+    fn c_kscrollup(n: c_int);
+    fn c_kscrolldown(n: c_int);
 
     fn kmap(k: xlib::KeySym, state: c_uint) -> *mut c_char;
 }

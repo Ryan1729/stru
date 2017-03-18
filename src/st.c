@@ -301,11 +301,11 @@ typedef struct {
 /* function definitions used in config.h */
 void c_clipcopy(const Arg *);
 void c_clippaste(const Arg *);
-void c_kscrolldown(const Arg *);
-void c_kscrollup(const Arg *);
+void c_kscrolldown(int n);
+void c_kscrollup(int n);
 void c_numlock(const Arg *);
 void c_selpaste(const Arg *);
-void c_xzoom(const Arg *);
+void c_xzoom(float f);
 void c_xzoomabs(const Arg *);
 void c_xzoomreset(const Arg *);
 void c_printsel(const Arg *);
@@ -1470,9 +1470,8 @@ ttywrite(const char *s, size_t n)
 	fd_set wfd, rfd;
 	ssize_t r;
 	size_t lim = 256;
-	Arg arg = (Arg){ .i = term.scr };
 
-	c_kscrolldown(&arg);
+	c_kscrolldown(term.scr);
 
 	/*
 	 * Remember that we are using a pty, which might be a modem line.
@@ -1565,10 +1564,8 @@ tsetdirt(int top, int bot)
 }
 
 void
-c_kscrolldown(const Arg* a)
+c_kscrolldown(int n)
 {
-	int n = a->i;
-
 	if (n < 0)
 		n = term.row + n;
 
@@ -1583,10 +1580,8 @@ c_kscrolldown(const Arg* a)
 }
 
 void
-c_kscrollup(const Arg* a)
+c_kscrollup(int n)
 {
-	int n = a->i;
-
 	if (n < 0)
 		n = term.row + n;
 
@@ -3191,11 +3186,11 @@ xunloadfonts(void)
 }
 
 void
-c_xzoom(const Arg *arg)
+c_xzoom(float f)
 {
 	Arg larg;
 
-	larg.f = usedfontsize + arg->f;
+	larg.f = usedfontsize + f;
 	c_xzoomabs(&larg);
 }
 
