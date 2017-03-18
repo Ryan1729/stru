@@ -10,6 +10,7 @@ extern crate x11;
 use x11::xlib;
 use x11::xft;
 use x11::xrender;
+use x11::keysym::*;
 
 extern crate fontconfig;
 use fontconfig::fontconfig::*;
@@ -23,6 +24,79 @@ use std::ptr;
 use std::cmp::max;
 
 mod config;
+
+use xlib::ShiftMask;
+use xlib::ControlMask;
+
+//returns true if consuming the keyboard event
+fn handle_shortcut(ksym: xlib::KeySym, state: c_uint) -> bool {
+    for shortcut in shortcuts.iter() {
+        if ksym == shortcut.key_sym && key_match(shortcut.key_mod, state) {
+            // match shortcut.call {
+            //     Int(func, arg) => {
+            //         func(arg);
+            //     }
+            //     UInt(func, arg) => {
+            //         func(arg);
+            //     }
+            //     Float(func, arg) => {
+            //         func(arg);
+            //     }
+            //     NoArg(func) => {
+            //         func();
+            //     }
+            // }
+
+            return true;
+        }
+    }
+
+    false
+}
+/* Internal keyboard shortcuts. */
+const MODKEY: c_uint = xlib::Mod1Mask;
+const XK_ANY_MOD: c_uint = 0xFFFFFFFF; //<c_uint>::max_value();
+
+// static shortcuts: [Shortcut;14] = [
+static shortcuts: [Shortcut; 0] = [
+	/* mask                 keysym          function        argument */
+	// Shortcut { key_mod: XK_ANY_MOD,    key_sym: XK_Break,call: NoArg(&sendbreak)},
+	// Shortcut { key_mod: ControlMask,key_sym: XK_Print,call: NoArg(&toggleprinter)},
+	// Shortcut { key_mod: ShiftMask,  key_sym: XK_Print,call: NoArg(&printscreen)},
+	// Shortcut { key_mod: XK_ANY_MOD, key_sym: XK_Print,call: NoArg(&printsel)},
+	// Shortcut { key_mod: MODKEY|ShiftMask,key_sym: XK_Prior,call: Float(&xzoom, 1 )},
+	// Shortcut { key_mod: MODKEY|ShiftMask,key_sym: XK_Next, call: Float(&xzoom, -1 )},
+	// Shortcut { key_mod: MODKEY|ShiftMask,key_sym: XK_Home, call: Float(&xzoomreset,  0 )},
+	// Shortcut { key_mod: ShiftMask,  key_sym: XK_Insert, call: NoArg(&selpaste)},
+	// Shortcut { key_mod: ControlMask|ShiftMask,key_sym: XK_Insert, call: NoArg(&clippaste)},
+	// Shortcut { key_mod: ControlMask|ShiftMask,key_sym: XK_C, call: NoArg(&clipcopy)},
+	// Shortcut { key_mod: ControlMask|ShiftMask,key_sym: XK_V, call: NoArg(&clippaste)},
+	// Shortcut { key_mod: MODKEY,     key_sym: XK_Num_Lock,    call: NoArg(&numlock)},
+	// Shortcut { key_mod: ShiftMask,  key_sym: XK_Page_Up,     call: Int(&kscrollup, -1)},
+	// Shortcut { key_mod: ShiftMask,  key_sym: XK_Page_Down,   call: Int(&kscrolldown, -1)},
+];
+
+//TODO can we do this in a way that doesn't require the extra indirection that
+//trait ocjects imply?
+
+enum Call {
+    // Int(&'static Fn(c_int), c_int),
+    // UInt(&'static Fn(c_uint), c_uint),
+    // Float(&'static Fn(c_float), c_float),
+    // NoArg(&'static Fn()),
+    DeleteThisLater,
+}
+use Call::*;
+
+struct Shortcut {
+    key_mod: c_uint,
+    key_sym: xlib::KeySym,
+    call: Call,
+}
+
+fn key_match(mask: c_uint, state: c_uint) -> bool {
+    mask == XK_ANY_MOD || mask == (state & !config::ignoremod)
+}
 
 // "the `link_args` attribute is not portable across platforms" but that's fine,
 // I just need it for the purposes of the port and only until I can move everything
@@ -58,6 +132,7 @@ extern "C" {
     fn ttynew();
     fn ttyresize();
     fn ttyread() -> size_t;
+    fn ttysend(s: *const c_char, n: size_t);
 
     fn tsetdirt(top: c_int, bot: c_int);
     fn tresize(col: c_int, row: c_int);
@@ -66,8 +141,8 @@ extern "C" {
     fn cresize(width: c_int, height: c_int);
 
     fn utf8decode(c: *mut c_char, u: *mut Rune, clen: size_t) -> size_t;
+    fn utf8encode(u: *mut Rune, c: *mut c_char) -> size_t;
 
-    fn kpress(ev: *const xlib::XEvent);
     fn cmessage(ev: *const xlib::XEvent);
     fn resize(ev: *const xlib::XEvent);
     fn visibility(ev: *const xlib::XEvent);
@@ -81,6 +156,21 @@ extern "C" {
     fn selnotify(ev: *const xlib::XEvent);
     fn propnotify(ev: *const xlib::XEvent);
     fn selrequest(ev: *const xlib::XEvent);
+
+    fn sendbreak(arg: *const u32);
+    fn toggleprinter(arg: *const u32);
+    fn printscreen(arg: *const u32);
+    fn printsel(arg: *const u32);
+    fn xzoom(arg: *const u32);
+    fn xzoomreset(arg: *const u32);
+    fn selpaste(arg: *const u32);
+    fn clippaste(arg: *const u32);
+    fn clipcopy(arg: *const u32);
+    fn numlock(arg: *const u32);
+    fn kscrollup(arg: *const u32);
+    fn kscrolldown(arg: *const u32);
+
+    fn kmap(k: xlib::KeySym, state: c_uint) -> *mut c_char;
 }
 
 //  a88888b.                              dP
@@ -946,7 +1036,6 @@ pub unsafe extern "C" fn draw() {
                              .pixel);
 }
 
-
 unsafe fn xdrawglyph(g: Glyph, x: c_int, y: c_int) {
     let mut spec = mem::zeroed::<xft::XftGlyphFontSpec>();
 
@@ -1685,63 +1774,119 @@ unsafe fn run(mut ev: xlib::XEvent) {
     }
 }
 
-unsafe fn call_handler(ev: xlib::XEvent) {
+unsafe fn call_handler(mut ev: xlib::XEvent) {
     match ev.get_type() {
         xlib::KeyPress => {
-            kpress(&ev as *const xlib::XEvent);
+            kpress(&mut ev as *mut xlib::XEvent);
         }
         xlib::ClientMessage => {
-            cmessage(&ev as *const xlib::XEvent);
+            cmessage(&mut ev as *mut xlib::XEvent);
         }
         xlib::ConfigureNotify => {
-            resize(&ev as *const xlib::XEvent);
+            resize(&mut ev as *mut xlib::XEvent);
         }
         xlib::VisibilityNotify => {
-            visibility(&ev as *const xlib::XEvent);
+            visibility(&mut ev as *mut xlib::XEvent);
         }
         xlib::UnmapNotify => {
-            unmap(&ev as *const xlib::XEvent);
+            unmap(&mut ev as *mut xlib::XEvent);
         }
         xlib::Expose => {
-            expose(&ev as *const xlib::XEvent);
+            expose(&mut ev as *mut xlib::XEvent);
         }
         xlib::FocusIn => {
-            focus(&ev as *const xlib::XEvent);
+            focus(&mut ev as *mut xlib::XEvent);
         }
         xlib::FocusOut => {
-            focus(&ev as *const xlib::XEvent);
+            focus(&mut ev as *mut xlib::XEvent);
         }
         xlib::MotionNotify => {
-            bmotion(&ev as *const xlib::XEvent);
+            bmotion(&mut ev as *mut xlib::XEvent);
         }
         xlib::ButtonPress => {
-            bpress(&ev as *const xlib::XEvent);
+            bpress(&mut ev as *mut xlib::XEvent);
         }
         xlib::ButtonRelease => {
-            brelease(&ev as *const xlib::XEvent);
+            brelease(&mut ev as *mut xlib::XEvent);
         }
         /*
          * Uncomment if you want the selection to disappear when you select something
          * different in another window.
          */
-        // xlib::SelectionClear => { selclear(&ev as *const xlib::XEvent);},
+        // xlib::SelectionClear => { selclear(&mut ev as *mut xlib::XEvent);},
         xlib::SelectionNotify => {
-            selnotify(&ev as *const xlib::XEvent);
+            selnotify(&mut ev as *mut xlib::XEvent);
         }
         /*
          * PropertyNotify is only turned on when there is some INCR transfer happening
          * for the selection retrieval.
          */
         xlib::PropertyNotify => {
-            propnotify(&ev as *const xlib::XEvent);
+            propnotify(&mut ev as *mut xlib::XEvent);
         }
         xlib::SelectionRequest => {
-            selrequest(&ev as *const xlib::XEvent);
+            selrequest(&mut ev as *mut xlib::XEvent);
         }
         _ => {}
 
     }
 
+}
+
+unsafe fn kpress(ev: *mut xlib::XEvent) {
+    let e: *mut xlib::XKeyEvent = &mut xlib::XKeyEvent::from(*ev) as *mut xlib::XKeyEvent;
+
+    if is_set_on!(MODE_KBDLOCK, term.mode, i32) {
+        return;
+    }
+
+    //TODO there's probably a way to do this that doesn't
+    // require 32 0's in a row, but this works for now
+    let bufffer = &mut [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0, 0, 0];
+    let mut buf: *mut c_char = bufffer.as_mut_ptr();
+
+    let mut ksym: xlib::KeySym = mem::zeroed::<xlib::KeySym>();
+    let mut status: xlib::Status = mem::zeroed::<xlib::Status>();
+    let mut len: size_t = xlib::XmbLookupString(xw.xic,
+                                                e,
+                                                buf,
+                                                mem::size_of::<[c_char; 32]>() as c_int,
+                                                &mut ksym as *mut c_ulong,
+                                                &mut status as *mut c_int) as
+                          size_t;
+
+    /* 1. shortcuts */
+    if handle_shortcut(ksym, (*e).state) {
+        return;
+    }
+
+    /* 2. custom keys from config.h */
+    let customkey = kmap(ksym, (*e).state);
+    if !customkey.is_null() {
+        ttysend(customkey, strlen(customkey));
+        return;
+    }
+
+    /* 3. composed string from input method */
+
+    if len == 0 {
+        return;
+    }
+    if len == 1 && ((*e).state & xlib::Mod1Mask) != 0 {
+        if is_set_on!(MODE_8BIT, term.mode, i32) {
+            //delete (0x7F) can just pass through
+            if *buf < 0x7F {
+                let mut c: Rune = (*buf as Rune) | 0x80;
+                len = utf8encode(&mut c as *mut Rune, buf);
+            }
+        } else {
+            *buf.offset(1) = *buf;
+            *buf = b'\x1B' as c_char;
+            len = 2;
+        }
+    }
+    ttysend(buf, len);
 }
 
 fn to_ptr(possible_arg: Option<&CString>) -> *const c_char {

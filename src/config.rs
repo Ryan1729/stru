@@ -1,6 +1,11 @@
 extern crate libc;
 use libc::*;
 
+extern crate x11;
+use x11::xlib::*;
+use x11::keysym::*;
+
+
 //NOTE must be synced with config.h for as long as  that exists
 pub const histsize: usize = 16; //2000;
 
@@ -97,3 +102,10 @@ pub const mousebg : c_int = 0;
 /* Kerning / character bounding-box multipliers */
 pub const cwscale:c_float = 1.0;
 pub const chscale:c_float = 1.0;
+
+/*
+ * State bits to ignore when matching key or button events.  By default,
+ * numlock (Mod2Mask) and keyboard layout (XK_SWITCH_MOD) are ignored.
+ */
+const XK_SWITCH_MOD : c_uint = 1<<13;
+pub static ignoremod: c_uint = Mod2Mask|XK_SWITCH_MOD;

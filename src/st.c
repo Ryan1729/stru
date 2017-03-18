@@ -298,27 +298,20 @@ typedef struct {
 	const Arg arg;
 } MouseKey;
 
-typedef struct {
-	uint mod;
-	KeySym keysym;
-	void (*func)(const Arg *);
-	const Arg arg;
-} Shortcut;
-
 /* function definitions used in config.h */
-static void clipcopy(const Arg *);
-static void clippaste(const Arg *);
-static void kscrolldown(const Arg *);
-static void kscrollup(const Arg *);
-static void numlock(const Arg *);
-static void selpaste(const Arg *);
-static void xzoom(const Arg *);
-static void xzoomabs(const Arg *);
-static void xzoomreset(const Arg *);
-static void printsel(const Arg *);
-static void printscreen(const Arg *) ;
-static void toggleprinter(const Arg *);
-static void sendbreak(const Arg *);
+void clipcopy(const Arg *);
+void clippaste(const Arg *);
+void kscrolldown(const Arg *);
+void kscrollup(const Arg *);
+void numlock(const Arg *);
+void selpaste(const Arg *);
+void xzoom(const Arg *);
+void xzoomabs(const Arg *);
+void xzoomreset(const Arg *);
+void printsel(const Arg *);
+void printscreen(const Arg *) ;
+void toggleprinter(const Arg *);
+void sendbreak(const Arg *);
 
 /* Config.h for applying patches and the configuration. */
 #include "config.h"
@@ -421,7 +414,7 @@ static inline int match(uint, uint);
 void ttynew(void);
 size_t ttyread(void);
 void ttyresize(void);
-static void ttysend(char *, size_t);
+void ttysend(char *, size_t);
 static void ttywrite(const char *, size_t);
 static void tstrsequence(uchar);
 
@@ -450,8 +443,7 @@ static void xresize(int, int);
 void expose(XEvent *);
 void visibility(XEvent *);
 void unmap(XEvent *);
-static char *kmap(KeySym, uint);
-void kpress(XEvent *);
+char *kmap(KeySym, uint);
 void cmessage(XEvent *);
 void cresize(int, int);
 void resize(XEvent *);
@@ -477,7 +469,7 @@ static void mousereport(XEvent *);
 
 size_t utf8decode(char *, Rune *, size_t);
 static Rune utf8decodebyte(char, size_t *);
-static size_t utf8encode(Rune, char *);
+size_t utf8encode(Rune, char *);
 static char utf8encodebyte(Rune, size_t);
 static char *utf8strchr(char *s, Rune u);
 static size_t utf8validate(Rune *, size_t);
@@ -3640,52 +3632,7 @@ kmap(KeySym k, uint state)
 	return NULL;
 }
 
-void
-kpress(XEvent *ev)
-{
-	XKeyEvent *e = &ev->xkey;
-	KeySym ksym;
-	char buf[32], *customkey;
-	int len;
-	Rune c;
-	Status status;
-	Shortcut *bp;
 
-	if (IS_SET(MODE_KBDLOCK))
-		return;
-
-	len = XmbLookupString(xw.xic, e, buf, sizeof buf, &ksym, &status);
-	/* 1. shortcuts */
-	for (bp = shortcuts; bp < shortcuts + LEN(shortcuts); bp++) {
-		if (ksym == bp->keysym && match(bp->mod, e->state)) {
-			bp->func(&(bp->arg));
-			return;
-		}
-	}
-
-	/* 2. custom keys from config.h */
-	if ((customkey = kmap(ksym, e->state))) {
-		ttysend(customkey, strlen(customkey));
-		return;
-	}
-
-	/* 3. composed string from input method */
-	if (len == 0)
-		return;
-	if (len == 1 && e->state & Mod1Mask) {
-		if (IS_SET(MODE_8BIT)) {
-			if (*buf < 0177) {
-				c = *buf | 0x80;
-				len = utf8encode(c, buf);
-			}
-		} else {
-			buf[1] = buf[0];
-			buf[0] = '\033';
-			len = 2;
-		}
-	}
-	ttysend(buf, len);
-}
 
 
 void
