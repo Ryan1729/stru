@@ -299,19 +299,19 @@ typedef struct {
 } MouseKey;
 
 /* function definitions used in config.h */
-void clipcopy(const Arg *);
-void clippaste(const Arg *);
-void kscrolldown(const Arg *);
-void kscrollup(const Arg *);
-void numlock(const Arg *);
-void selpaste(const Arg *);
-void xzoom(const Arg *);
-void xzoomabs(const Arg *);
-void xzoomreset(const Arg *);
-void printsel(const Arg *);
-void printscreen(const Arg *) ;
-void toggleprinter(const Arg *);
-void sendbreak(const Arg *);
+void c_clipcopy(const Arg *);
+void c_clippaste(const Arg *);
+void c_kscrolldown(const Arg *);
+void c_kscrollup(const Arg *);
+void c_numlock(const Arg *);
+void c_selpaste(const Arg *);
+void c_xzoom(const Arg *);
+void c_xzoomabs(const Arg *);
+void c_xzoomreset(const Arg *);
+void c_printsel(const Arg *);
+void c_printscreen(const Arg *) ;
+void c_toggleprinter(const Arg *);
+void c_sendbreak(const Arg *);
 
 /* Config.h for applying patches and the configuration. */
 #include "config.h"
@@ -335,7 +335,7 @@ typedef struct {
 	char trantbl[4]; /* charset table translation */
 	int charset;  /* current charset */
 	int icharset; /* selected charset for sequence */
-	int numlock; /* lock numbers in keyboard */
+	int c_numlock; /* lock numbers in keyboard */
 	int *tabs;
 } Term;
 
@@ -1123,14 +1123,14 @@ selnotify(XEvent *e)
 }
 
 void
-selpaste(const Arg *dummy)
+c_selpaste(const Arg *dummy)
 {
 	XConvertSelection(xw.dpy, XA_PRIMARY, sel.xtarget, XA_PRIMARY,
 			xw.win, CurrentTime);
 }
 
 void
-clipcopy(const Arg *dummy)
+c_clipcopy(const Arg *dummy)
 {
 	Atom clipboard;
 
@@ -1145,7 +1145,7 @@ clipcopy(const Arg *dummy)
 }
 
 void
-clippaste(const Arg *dummy)
+c_clippaste(const Arg *dummy)
 {
 	Atom clipboard;
 
@@ -1242,7 +1242,7 @@ brelease(XEvent *e)
 	}
 
 	if (e->xbutton.button == Button2) {
-		selpaste(NULL);
+		c_selpaste(NULL);
 	} else if (e->xbutton.button == Button1) {
 		if (sel.mode == SEL_READY) {
 			getbuttoninfo(e);
@@ -1472,7 +1472,7 @@ ttywrite(const char *s, size_t n)
 	size_t lim = 256;
 	Arg arg = (Arg){ .i = term.scr };
 
-	kscrolldown(&arg);
+	c_kscrolldown(&arg);
 
 	/*
 	 * Remember that we are using a pty, which might be a modem line.
@@ -1565,7 +1565,7 @@ tsetdirt(int top, int bot)
 }
 
 void
-kscrolldown(const Arg* a)
+c_kscrolldown(const Arg* a)
 {
 	int n = a->i;
 
@@ -1583,7 +1583,7 @@ kscrolldown(const Arg* a)
 }
 
 void
-kscrollup(const Arg* a)
+c_kscrollup(const Arg* a)
 {
 	int n = a->i;
 
@@ -2492,7 +2492,7 @@ strreset(void)
 }
 
 void
-sendbreak(const Arg *arg)
+c_sendbreak(const Arg *arg)
 {
 	if (tcsendbreak(cmdfd, 0))
 		perror("Error sending break");
@@ -2510,19 +2510,19 @@ tprinter(char *s, size_t len)
 }
 
 void
-toggleprinter(const Arg *arg)
+c_toggleprinter(const Arg *arg)
 {
 	term.mode ^= MODE_PRINT;
 }
 
 void
-printscreen(const Arg *arg)
+c_printscreen(const Arg *arg)
 {
 	tdump();
 }
 
 void
-printsel(const Arg *arg)
+c_printsel(const Arg *arg)
 {
 	tdumpsel();
 }
@@ -3191,16 +3191,16 @@ xunloadfonts(void)
 }
 
 void
-xzoom(const Arg *arg)
+c_xzoom(const Arg *arg)
 {
 	Arg larg;
 
 	larg.f = usedfontsize + arg->f;
-	xzoomabs(&larg);
+	c_xzoomabs(&larg);
 }
 
 void
-xzoomabs(const Arg *arg)
+c_xzoomabs(const Arg *arg)
 {
 	xunloadfonts();
 	loadfonts(arg->f);
@@ -3211,13 +3211,13 @@ xzoomabs(const Arg *arg)
 }
 
 void
-xzoomreset(const Arg *arg)
+c_xzoomreset(const Arg *arg)
 {
 	Arg larg;
 
 	if (defaultfontsize > 0) {
 		larg.f = defaultfontsize;
-		xzoomabs(&larg);
+		c_xzoomabs(&larg);
 	}
 }
 
@@ -3587,9 +3587,9 @@ match(uint mask, uint state)
 }
 
 void
-numlock(const Arg *dummy)
+c_numlock(const Arg *dummy)
 {
-	term.numlock ^= 1;
+	term.c_numlock ^= 1;
 }
 
 char*
@@ -3617,7 +3617,7 @@ kmap(KeySym k, uint state)
 
 		if (IS_SET(MODE_APPKEYPAD) ? kp->appkey < 0 : kp->appkey > 0)
 			continue;
-		if (term.numlock && kp->appkey == 2)
+		if (term.c_numlock && kp->appkey == 2)
 			continue;
 
 		if (IS_SET(MODE_APPCURSOR) ? kp->appcursor < 0 : kp->appcursor > 0)

@@ -157,18 +157,18 @@ extern "C" {
     fn propnotify(ev: *const xlib::XEvent);
     fn selrequest(ev: *const xlib::XEvent);
 
-    fn sendbreak(arg: *const u32);
-    fn toggleprinter(arg: *const u32);
-    fn printscreen(arg: *const u32);
-    fn printsel(arg: *const u32);
-    fn xzoom(arg: *const u32);
-    fn xzoomreset(arg: *const u32);
-    fn selpaste(arg: *const u32);
-    fn clippaste(arg: *const u32);
-    fn clipcopy(arg: *const u32);
-    fn numlock(arg: *const u32);
-    fn kscrollup(arg: *const u32);
-    fn kscrolldown(arg: *const u32);
+    fn c_sendbreak(arg: *const u32);
+    fn c_toggleprinter(arg: *const u32);
+    fn c_printscreen(arg: *const u32);
+    fn c_printsel(arg: *const u32);
+    fn c_xzoom(arg: *const u32);
+    fn c_xzoomreset(arg: *const u32);
+    fn c_selpaste(arg: *const u32);
+    fn c_clippaste(arg: *const u32);
+    fn c_clipcopy(arg: *const u32);
+    fn c_numlock(arg: *const u32);
+    fn c_kscrollup(arg: *const u32);
+    fn c_kscrolldown(arg: *const u32);
 
     fn kmap(k: xlib::KeySym, state: c_uint) -> *mut c_char;
 }
