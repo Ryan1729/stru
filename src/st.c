@@ -247,12 +247,6 @@ typedef struct {
 } XWindow;
 
 typedef struct {
-	uint b;
-	uint mask;
-	char *s;
-} MouseShortcut;
-
-typedef struct {
 	KeySym k;
 	uint mask;
 	char *s;
@@ -290,13 +284,6 @@ typedef union {
 	float f;
 	const void *v;
 } Arg;
-
-typedef struct {
-	uint b;
-	uint mask;
-	void (*func)(const Arg *);
-	const Arg arg;
-} MouseKey;
 
 /* function definitions used in config.h */
 void c_clipcopy(const Arg *);
@@ -449,14 +436,13 @@ void cresize(int, int);
 void resize(XEvent *);
 void focus(XEvent *);
 void brelease(XEvent *);
-void bpress(XEvent *);
 void bmotion(XEvent *);
 void propnotify(XEvent *);
 void selnotify(XEvent *);
 void selclear(XEvent *);
 void selrequest(XEvent *);
 
-static void selnormalize(void);
+void selnormalize(void);
 int selected(int, int);
 static char *getsel(void);
 static void selcopy(Time);
@@ -465,7 +451,7 @@ static void selsnap(int *, int *, int);
 static int x2col(int);
 static int y2row(int);
 static void getbuttoninfo(XEvent *);
-static void mousereport(XEvent *);
+void mousereport(XEvent *);
 
 size_t utf8decode(char *, Rune *, size_t);
 static Rune utf8decodebyte(char, size_t *);
@@ -896,67 +882,6 @@ mousereport(XEvent *e)
 	}
 
 	ttywrite(buf, len);
-}
-
-void
-bpress(XEvent *e)
-{
-	struct timespec now;
-	MouseShortcut *ms;
-	MouseKey *mk;
-
-	if (IS_SET(MODE_MOUSE) && !(e->xbutton.state & forceselmod)) {
-		mousereport(e);
-		return;
-	}
-
-  if (IS_SET(MODE_ALTSCREEN)) {
-  	for (ms = mshortcuts; ms < mshortcuts + LEN(mshortcuts); ms++) {
-  		if (e->xbutton.button == ms->b
-  				&& match(ms->mask, e->xbutton.state)) {
-  			ttysend(ms->s, strlen(ms->s));
-  			return;
-  		}
-  	}
-  }
-
-	for (mk = mkeys; mk < mkeys + LEN(mkeys); mk++) {
-		if (e->xbutton.button == mk->b
-				&& match(mk->mask, e->xbutton.state)) {
-			mk->func(&mk->arg);
-			return;
-		}
-	}
-
-	if (e->xbutton.button == Button1) {
-		clock_gettime(CLOCK_MONOTONIC, &now);
-
-		/* Clear previous selection, logically and visually. */
-		selclear(NULL);
-		sel.mode = SEL_EMPTY;
-		sel.type = SEL_REGULAR;
-		sel.oe.x = sel.ob.x = x2col(e->xbutton.x);
-		sel.oe.y = sel.ob.y = y2row(e->xbutton.y);
-
-		/*
-		 * If the user clicks below predefined timeouts specific
-		 * snapping behaviour is exposed.
-		 */
-		if (TIMEDIFF(now, sel.tclick2) <= tripleclicktimeout) {
-			sel.snap = SNAP_LINE;
-		} else if (TIMEDIFF(now, sel.tclick1) <= doubleclicktimeout) {
-			sel.snap = SNAP_WORD;
-		} else {
-			sel.snap = 0;
-		}
-		selnormalize();
-
-		if (sel.snap != 0)
-			sel.mode = SEL_READY;
-		tsetdirt(sel.nb.y, sel.ne.y);
-		sel.tclick2 = sel.tclick1;
-		sel.tclick1 = now;
-	}
 }
 
 char *

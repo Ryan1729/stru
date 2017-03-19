@@ -7,7 +7,7 @@ use x11::keysym::*;
 
 
 //NOTE must be synced with config.h for as long as  that exists
-pub const histsize: usize = 16; //2000;
+pub const histsize: c_int = 16; //2000;
 
 //TODO does this comment mean anything for this port?
 /*
@@ -109,3 +109,14 @@ pub const chscale:c_float = 1.0;
  */
 const XK_SWITCH_MOD : c_uint = 1<<13;
 pub static ignoremod: c_uint = Mod2Mask|XK_SWITCH_MOD;
+
+/*
+ * Override mouse-select while mask is active (when MODE_MOUSE is set).
+ * Note that if you want to use ShiftMask with selmasks, set this to an other
+ * modifier, set to 0 to not use it.
+ */
+pub const forceselmod: c_uint = ShiftMask;
+
+/* selection timeouts (in milliseconds) */
+pub const doubleclicktimeout: c_long = 300;
+pub const tripleclicktimeout: c_long = 600;

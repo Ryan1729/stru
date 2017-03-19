@@ -1,7 +1,9 @@
 #![feature(link_args)]
 #![feature(drop_types_in_const)]
 
+//TODO remove the need for these
 #![allow(non_upper_case_globals)]
+#![warn(unused_imports)]
 
 extern crate libc;
 use libc::*;
@@ -27,11 +29,16 @@ mod config;
 
 use xlib::ShiftMask;
 use xlib::ControlMask;
+use xlib::Button1;
+use xlib::Button2;
+use xlib::Button3;
+use xlib::Button4;
+use xlib::Button5;
 
 //returns true if consuming the keyboard event
 fn handle_shortcut(ksym: xlib::KeySym, state: c_uint) -> bool {
     for shortcut in shortcuts.iter() {
-        if ksym == (shortcut.key_sym as u64) && key_match(shortcut.key_mod, state) {
+        if ksym == (shortcut.key_sym as u64) && x_mod_match(shortcut.key_mod, state) {
             match shortcut.call {
                 Int(func, arg) => {
                     func(arg);
@@ -53,27 +60,179 @@ fn handle_shortcut(ksym: xlib::KeySym, state: c_uint) -> bool {
 
     false
 }
+
+//returns true if consuming the mouse event
+fn handle_mouse_shortcut(button: c_uint, state: c_uint) -> bool {
+    for shortcut in mshortcuts.iter() {
+        if button == shortcut.b && x_mod_match(shortcut.mask, state) {
+            unsafe {
+                ttysend(shortcut.s.as_ptr() as *mut _, shortcut.s.len());
+            }
+
+            return true;
+        }
+    }
+
+    false
+}
+//returns true if consuming the mouse event
+fn handle_mouse_key(button: c_uint, state: c_uint) -> bool {
+    for key in mkeys.iter() {
+        if button == key.b && x_mod_match(key.mask, state) {
+            match key.call {
+                Int(func, arg) => {
+                    func(arg);
+                }
+                UInt(func, arg) => {
+                    func(arg);
+                }
+                Float(func, arg) => {
+                    func(arg);
+                }
+                NoArg(func) => {
+                    func();
+                }
+            }
+
+            return true;
+        }
+    }
+
+    false
+}
+
 /* Internal keyboard shortcuts. */
 const MODKEY: c_uint = xlib::Mod1Mask;
 const XK_ANY_MOD: c_uint = 0xFFFFFFFF;
+const XK_NO_MOD: c_uint = 0;
 
-static shortcuts: [Shortcut;14] = [
-	/* mask                 keysym          function        argument */
-	Shortcut { key_mod: XK_ANY_MOD,    key_sym: XK_Break,call: NoArg(sendbreak)},
-	Shortcut { key_mod: ControlMask,key_sym: XK_Print,call: NoArg(toggleprinter)},
-	Shortcut { key_mod: ShiftMask,  key_sym: XK_Print,call: NoArg(printscreen)},
-	Shortcut { key_mod: XK_ANY_MOD, key_sym: XK_Print,call: NoArg(printsel)},
-	Shortcut { key_mod: MODKEY|ShiftMask,key_sym: XK_Prior,call: Float(xzoom, 1.0 )},
-	Shortcut { key_mod: MODKEY|ShiftMask,key_sym: XK_Next, call: Float(xzoom, -1.0 )},
-	Shortcut { key_mod: MODKEY|ShiftMask,key_sym: XK_Home, call: NoArg(xzoomreset)},
-	Shortcut { key_mod: ShiftMask,  key_sym: XK_Insert, call: NoArg(selpaste)},
-	Shortcut { key_mod: ControlMask|ShiftMask,key_sym: XK_Insert, call: NoArg(clippaste)},
-	Shortcut { key_mod: ControlMask|ShiftMask,key_sym: XK_C, call: NoArg(clipcopy)},
-	Shortcut { key_mod: ControlMask|ShiftMask,key_sym: XK_V, call: NoArg(clippaste)},
-	Shortcut { key_mod: MODKEY,     key_sym: XK_Num_Lock,    call: NoArg(numlock)},
-	Shortcut { key_mod: ShiftMask,  key_sym: XK_Page_Up,     call: Int(kscrollup, -1)},
-	Shortcut { key_mod: ShiftMask,  key_sym: XK_Page_Down,   call: Int(kscrolldown, -1)},
-];
+static shortcuts: [Shortcut; 14] = [Shortcut {
+                                        key_mod: XK_ANY_MOD,
+                                        key_sym: XK_Break,
+                                        call: NoArg(sendbreak),
+                                    },
+                                    Shortcut {
+                                        key_mod: ControlMask,
+                                        key_sym: XK_Print,
+                                        call: NoArg(toggleprinter),
+                                    },
+                                    Shortcut {
+                                        key_mod: ShiftMask,
+                                        key_sym: XK_Print,
+                                        call: NoArg(printscreen),
+                                    },
+                                    Shortcut {
+                                        key_mod: XK_ANY_MOD,
+                                        key_sym: XK_Print,
+                                        call: NoArg(printsel),
+                                    },
+                                    Shortcut {
+                                        key_mod: MODKEY | ShiftMask,
+                                        key_sym: XK_Prior,
+                                        call: Float(xzoom, 1.0),
+                                    },
+                                    Shortcut {
+                                        key_mod: MODKEY | ShiftMask,
+                                        key_sym: XK_Next,
+                                        call: Float(xzoom, -1.0),
+                                    },
+                                    Shortcut {
+                                        key_mod: MODKEY | ShiftMask,
+                                        key_sym: XK_Home,
+                                        call: NoArg(xzoomreset),
+                                    },
+                                    Shortcut {
+                                        key_mod: ShiftMask,
+                                        key_sym: XK_Insert,
+                                        call: NoArg(selpaste),
+                                    },
+                                    Shortcut {
+                                        key_mod: ControlMask | ShiftMask,
+                                        key_sym: XK_Insert,
+                                        call: NoArg(clippaste),
+                                    },
+                                    Shortcut {
+                                        key_mod: ControlMask | ShiftMask,
+                                        key_sym: XK_C,
+                                        call: NoArg(clipcopy),
+                                    },
+                                    Shortcut {
+                                        key_mod: ControlMask | ShiftMask,
+                                        key_sym: XK_V,
+                                        call: NoArg(clippaste),
+                                    },
+                                    Shortcut {
+                                        key_mod: MODKEY,
+                                        key_sym: XK_Num_Lock,
+                                        call: NoArg(numlock),
+                                    },
+                                    Shortcut {
+                                        key_mod: ShiftMask,
+                                        key_sym: XK_Page_Up,
+                                        call: Int(kscrollup, -1),
+                                    },
+                                    Shortcut {
+                                        key_mod: ShiftMask,
+                                        key_sym: XK_Page_Down,
+                                        call: Int(kscrolldown, -1),
+                                    }];
+
+/*
+ * Internal mouse shortcuts.
+ * Beware that overloading Button1 will disable the selection.
+ */
+static mshortcuts: [MouseShortcut; 2] = [MouseShortcut {
+                                             b: Button4,
+                                             mask: XK_NO_MOD,
+                                             s: b"\031\0",
+                                         },
+                                         MouseShortcut {
+                                             b: Button5,
+                                             mask: XK_NO_MOD,
+                                             s: b"\005\0",
+                                         }];
+
+static mkeys: [MouseKey; 3] = [MouseKey {
+                                   b: Button4,
+                                   mask: XK_NO_MOD,
+                                   call: Int(kscrollup, 1),
+                               },
+                               MouseKey {
+                                   b: Button5,
+                                   mask: XK_NO_MOD,
+                                   call: Int(kscrolldown, 1),
+                               },
+                               MouseKey {
+                                   b: Button3,
+                                   mask: XK_NO_MOD,
+                                   call: NoArg(clippaste),
+                               }];
+
+enum Call {
+    Int(fn(c_int), c_int),
+    UInt(fn(c_uint), c_uint),
+    Float(fn(c_float), c_float),
+    NoArg(fn()),
+}
+use Call::*;
+
+struct Shortcut {
+    key_mod: c_uint,
+    key_sym: c_uint,
+    call: Call,
+}
+
+struct MouseShortcut {
+    b: c_uint,
+    mask: c_uint,
+    s: &'static [u8],
+}
+
+struct MouseKey {
+    b: c_uint,
+    mask: c_uint,
+    call: Call,
+}
 
 fn sendbreak() {
     unsafe {
@@ -130,27 +289,13 @@ fn kscrollup(n: c_int) {
         c_kscrollup(n);
     }
 }
-fn kscrolldown(n : c_int) {
+fn kscrolldown(n: c_int) {
     unsafe {
         c_kscrolldown(n);
     }
 }
 
-enum Call {
-    Int(fn(c_int), c_int),
-    UInt(fn(c_uint), c_uint),
-    Float(fn(c_float), c_float),
-    NoArg(fn()),
-}
-use Call::*;
-
-struct Shortcut {
-    key_mod: c_uint,
-    key_sym: c_uint,
-    call: Call,
-}
-
-fn key_match(mask: c_uint, state: c_uint) -> bool {
+fn x_mod_match(mask: c_uint, state: c_uint) -> bool {
     mask == XK_ANY_MOD || mask == (state & !config::ignoremod)
 }
 
@@ -185,6 +330,8 @@ extern "C" {
 
     fn selected(x: c_int, y: c_int) -> c_int;
 
+    fn selnormalize();
+
     fn ttynew();
     fn ttyresize();
     fn ttyread() -> size_t;
@@ -206,12 +353,13 @@ extern "C" {
     fn expose(ev: *const xlib::XEvent);
     fn focus(ev: *const xlib::XEvent);
     fn bmotion(ev: *const xlib::XEvent);
-    fn bpress(ev: *const xlib::XEvent);
     fn brelease(ev: *const xlib::XEvent);
     fn selclear(ev: *const xlib::XEvent);
     fn selnotify(ev: *const xlib::XEvent);
     fn propnotify(ev: *const xlib::XEvent);
     fn selrequest(ev: *const xlib::XEvent);
+
+    fn mousereport(ev: *const xlib::XEvent);
 
     fn c_sendbreak(arg: *const c_void);
     fn c_toggleprinter(arg: *const c_void);
@@ -445,6 +593,23 @@ enum selection_mode {
     SEL_READY = 2,
 }
 use selection_mode::*;
+
+#[allow(dead_code)]
+#[allow(non_camel_case_types)]
+enum selection_type {
+    SEL_REGULAR = 1,
+    SEL_RECTANGULAR = 2,
+}
+use selection_type::*;
+
+#[allow(non_camel_case_types)]
+enum selection_snap {
+    SNAP_NONE = 0,
+    SNAP_WORD = 1,
+    SNAP_LINE = 2,
+}
+use selection_snap::*;
+
 
 #[allow(dead_code)]
 #[allow(non_camel_case_types)]
@@ -723,7 +888,7 @@ pub static mut term: Term = Term {
     col: 0,
     line: 0 as *mut *mut Glyph,
     alt: 0 as *mut *mut Glyph,
-    hist: [0 as *mut Glyph; config::histsize],
+    hist: [0 as *mut Glyph; config::histsize as usize],
     histi: 0,
     scr: 0,
     dirty: 0 as *mut c_int,
@@ -747,7 +912,7 @@ pub struct Term {
     col: c_int,
     line: *mut *mut Glyph,
     alt: *mut *mut Glyph,
-    hist: [*mut Glyph; config::histsize],
+    hist: [*mut Glyph; config::histsize as usize],
     histi: c_int,
     scr: c_int,
     dirty: *mut c_int,
@@ -1293,8 +1458,11 @@ fn basename(path: &str) -> &str {
 
 unsafe fn term_line(y: c_int) -> *mut Glyph {
     if y < term.scr {
-        let index = ((y as usize + (term.histi - term.scr) as usize +
-                      config::histsize + 1) as usize % config::histsize) as
+        println!("y = {} (term.histi - term.scr)  = {} (config::histsize + 1) = {}",
+                 y,
+                 (term.histi - term.scr),
+                 (config::histsize + 1));
+        let index = ((y + (term.histi - term.scr) + config::histsize + 1) % config::histsize) as
                     usize;
 
         term.hist[index]
@@ -1943,6 +2111,73 @@ unsafe fn kpress(ev: *mut xlib::XEvent) {
         }
     }
     ttysend(buf, len);
+}
+
+unsafe fn bpress(ev: *mut xlib::XEvent) {
+    let e: *mut xlib::XButtonEvent = &mut xlib::XButtonEvent::from(*ev) as *mut xlib::XButtonEvent;
+
+    if is_set_on!(MODE_MOUSE, term.mode, i32) && ((*e).state & config::forceselmod) == 0 {
+        mousereport(ev);
+        return;
+    }
+
+    if is_set_on!(MODE_ALTSCREEN, term.mode, i32) {
+        if handle_mouse_shortcut((*e).button, (*e).state) {
+            return;
+        }
+    }
+
+    if handle_mouse_key((*e).button, (*e).state) {
+        return;
+    }
+
+    let mut now = new!(libc::timespec);
+    if (*e).button == Button1 {
+        clock_gettime(CLOCK_MONOTONIC, &mut now as *mut libc::timespec);
+
+        /* Clear previous selection, logically and visually. */
+        selclear(0 as *mut xlib::XEvent);
+        sel.mode = SEL_EMPTY as i32;
+        sel.type_ = SEL_REGULAR as i32;
+        sel.ob.x = x2col((*e).x);
+        sel.oe.x = sel.ob.x;
+        sel.ob.y = y2row((*e).y);
+        sel.oe.y = sel.ob.y;
+
+        /*
+         * If the user clicks below predefined timeouts specific
+         * snapping behaviour is exposed.
+         */
+        if time_diff!(now, sel.tclick2) <= config::tripleclicktimeout {
+            sel.snap = SNAP_LINE as i32;
+        } else if time_diff!(now, sel.tclick1) <= config::doubleclicktimeout {
+            sel.snap = SNAP_WORD as i32;
+        } else {
+            sel.snap = SNAP_NONE as i32;
+        }
+        selnormalize();
+
+        if sel.snap != 0 {
+            sel.mode = SEL_READY as i32;
+        }
+        tsetdirt(sel.nb.y, sel.ne.y);
+        sel.tclick2 = sel.tclick1;
+        sel.tclick1 = now;
+    }
+}
+
+unsafe fn x2col(mut x: c_int) -> c_int {
+    x -= config::borderpx;
+    x /= xw.cw;
+
+    return limit!(x, 0, term.col - 1);
+}
+
+unsafe fn y2row(mut y: c_int) -> c_int {
+    y -= config::borderpx;
+    y /= xw.ch;
+
+    return limit!(y, 0, term.row - 1);
 }
 
 fn to_ptr(possible_arg: Option<&CString>) -> *const c_char {

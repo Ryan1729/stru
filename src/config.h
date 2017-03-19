@@ -32,10 +32,6 @@ static char vtiden[] = "\033[?6c";
  */
 static char worddelimiters[] = " ";
 
-/* selection timeouts (in milliseconds) */
-static unsigned int doubleclicktimeout = 300;
-static unsigned int tripleclicktimeout = 600;
-
 /* alt screens */
 extern int allowaltscreen;
 
@@ -98,23 +94,6 @@ static unsigned int mousebg = 0;
  */
 static unsigned int defaultitalic = 11;
 static unsigned int defaultunderline = 7;
-
-/*
- * Internal mouse shortcuts.
- * Beware that overloading Button1 will disable the selection.
- */
-static MouseShortcut mshortcuts[] = {
-	/* button               mask            string */
-	{ Button4,              XK_NO_MOD,      "\031" },
-	{ Button5,              XK_NO_MOD,      "\005" },
-};
-
-static MouseKey mkeys[] = {
-	/* button               mask            function        argument */
-	{ Button4,              XK_NO_MOD,      c_kscrollup,      {.i =  1} },
-	{ Button5,              XK_NO_MOD,      c_kscrolldown,    {.i =  1} },
-	{ Button3,              XK_NO_MOD,      c_clippaste,      {.i =  0} },
-};
 
 /*
  * Special keys (change & recompile st.info accordingly)
