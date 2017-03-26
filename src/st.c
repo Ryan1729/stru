@@ -418,8 +418,8 @@ static int xsetcolorname(int, const char *);
 static int xgeommasktogravity(int);
 int xloadfont(Font *, FcPattern *);
 void loadfonts(double);
-static void xsettitle(char *);
-static void xresettitle(void);
+extern void xsettitle(char *);
+extern void xresettitle(void);
 static void xsetpointermotion(int);
 static void xseturgency(int);
 static void xsetsel(char *, Time);
@@ -489,7 +489,6 @@ static char *opt_embed = NULL;
 static char *opt_io    = NULL;
 static char *opt_line  = NULL;
 static char *opt_name  = NULL;
-static char *opt_title = NULL;
 static int oldbutton   = 3; /* button event on startup: 3 = release */
 
 extern double usedfontsize;
@@ -3417,24 +3416,6 @@ xdrawglyphfontspecs(const XftGlyphFontSpec *specs, Glyph base, int len, int x, i
 }
 
 void
-xsettitle(char *p)
-{
-	XTextProperty prop;
-
-	Xutf8TextListToTextProperty(xw.dpy, &p, 1, XUTF8StringStyle,
-			&prop);
-	XSetWMName(xw.dpy, xw.win, &prop);
-	XSetTextProperty(xw.dpy, xw.win, &prop, xw.netwmname);
-	XFree(prop.value);
-}
-
-void
-xresettitle(void)
-{
-	xsettitle(opt_title ? opt_title : "stru");
-}
-
-void
 redraw(void)
 {
 	tfulldirt();
@@ -3604,13 +3585,12 @@ resize(XEvent *e)
 }
 
 void
-st_main(int argc, char *argv[], char *opt_title_param, char *opt_class_param,
+st_main(int argc, char *argv[], char *opt_class_param,
   char *opt_io_param, char *opt_line_param,
   char *opt_name_param)
 {
   printf("in c\n");
 
-  opt_title = opt_title_param ? xstrdup(opt_title_param) : NULL;
   opt_class = opt_class_param ? xstrdup(opt_class_param) : NULL;
   opt_io = opt_io_param ? xstrdup(opt_io_param) : NULL;
   opt_line = opt_line_param ? xstrdup(opt_line_param) : NULL;

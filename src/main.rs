@@ -306,7 +306,6 @@ fn x_mod_match(mask: c_uint, state: c_uint) -> bool {
 extern "C" {
     fn st_main(argc: c_int,
                argv: *const *const c_char,
-               opt_title: *const c_char,
                opt_class: *const c_char,
                opt_io: *const c_char,
                opt_line: *const c_char,
@@ -966,6 +965,31 @@ pub unsafe extern "C" fn tfulldirt() {
     tsetdirt(0, term.row - 1);
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn xsettitle(mut p: *mut c_char) {
+    let mut prop: xlib::XTextProperty = mem::zeroed();
+
+    let prop_ptr = &mut prop as *mut _;
+
+    xlib::Xutf8TextListToTextProperty(xw.dpy, &mut p as *mut _, 1, 4, prop_ptr);
+    xlib::XSetWMName(xw.dpy, xw.win, prop_ptr);
+    xlib::XSetTextProperty(xw.dpy, xw.win, prop_ptr, xw.netwmname);
+    xlib::XFree(prop.value as *mut _);
+}
+
+static mut opt_title: *mut c_char = 0 as *mut c_char;
+
+static mut DEFAULT_TITLE: &'static [u8; 5] = b"stru\0";
+
+#[no_mangle]
+pub unsafe extern "C" fn xresettitle() {
+    xsettitle(if opt_title.is_null() {
+                  DEFAULT_TITLE.as_ptr() as *mut c_char
+              } else {
+                  opt_title
+              });
+}
+
 static mut usedfont: Option<CString> = None;
 
 static mut FC_PIXEL_SIZE: &'static [u8; 10] = b"pixelsize\0";
@@ -1250,11 +1274,11 @@ pub unsafe extern "C" fn draw() {
     xlib::XSetForeground(xw.dpy,
                          dc.gc,
                          dc.col[if is_set_on!(MODE_REVERSE, term.mode, c_int) {
-                                 config::defaultfg
-                             } else {
-                                 config::defaultbg
-                             } as usize]
-                             .pixel);
+                             config::defaultfg
+                         } else {
+                             config::defaultbg
+                         } as usize]
+                                 .pixel);
 }
 
 unsafe fn xdrawglyph(g: Glyph, x: c_int, y: c_int) {
@@ -1726,7 +1750,7 @@ fn main() {
         "stru".to_string()
     };
 
-    let mut opt_title: Option<CString> = None;
+    let mut temp_opt_title: Option<CString> = None;
     let mut opt_class: Option<CString> = None;
     let mut opt_io: Option<CString> = None;
     let mut opt_geo: Option<CString> = None;
@@ -1746,8 +1770,8 @@ fn main() {
 
         flag = flag.chars()
             .filter(|c| match *c {
-                'v' => {
-                    die!("{}
+                        'v' => {
+                            die!("{}
 A port of st to Rust.
 
 Original port was done from the version of st found at
@@ -1755,23 +1779,23 @@ https://github.com/Ryan1729/st-plus-some-patches
 
 C version of st (c) 2010-2016 st engineers
 and can be found at st.suckless.org\n",
-                         exe_path)
-                }
-                'a' => {
-                    opt_allow_alt_screen = false;
-                    false
-                }
-                'i' => {
-                    opt_is_fixed = true;
-                    false
-                }
+                                 exe_path)
+                        }
+                        'a' => {
+                opt_allow_alt_screen = false;
+                false
+            }
+                        'i' => {
+                opt_is_fixed = true;
+                false
+            }
 
-                _ => true,
-            })
+                        _ => true,
+                    })
             .collect();
 
         match flag.as_ref() {
-            "t" | "T" => arg_set!(CString opt_title, args, cmd_start, len, &exe_path),
+            "t" | "T" => arg_set!(CString temp_opt_title, args, cmd_start, len, &exe_path),
             "c" => arg_set!(CString opt_class, args, cmd_start, len, &exe_path),
             "o" => arg_set!(CString opt_io, args, cmd_start, len, &exe_path),
             "g" => arg_set!(CString opt_geo, args, cmd_start, len, &exe_path),
@@ -1805,9 +1829,12 @@ and can be found at st.suckless.org\n",
     let c_args = zt_args.iter().map(|arg| arg.as_ptr()).collect::<Vec<*const c_char>>();
 
     if c_args.len() > 0 {
-        if opt_title.is_none() && opt_line.is_none() {
-            opt_title = opt_cmd.get(0)
-                .map(|arg| CString::new((basename((*arg).as_ref())).to_string()).unwrap());
+        if temp_opt_title.is_none() && opt_line.is_none() {
+            temp_opt_title = opt_cmd.get(0).map(|arg| {
+                                                    CString::new((basename((*arg).as_ref()))
+                                                                     .to_string())
+                                                            .unwrap()
+                                                });
         }
     }
 
@@ -1836,9 +1863,12 @@ and can be found at st.suckless.org\n",
 
         selinit();
 
+        if let Some(title) = temp_opt_title {
+            opt_title = title.into_raw();
+        }
+
         st_main(c_args.len() as c_int,
                 c_args.as_ptr(),
-                to_ptr(opt_title.as_ref()),
                 to_ptr(opt_class.as_ref()),
                 to_ptr(opt_io.as_ref()),
                 to_ptr(opt_line.as_ref()),
